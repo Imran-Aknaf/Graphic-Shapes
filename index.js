@@ -36,19 +36,49 @@ function project({ x, y, z }) {
   }
 }
 
+function translate_z({ x, y, z }, dz) {
+  return {
+    x: x,
+    y: y,
+    z: z + dz
+  }
+}
+
+
+
+
 const FPS = 60
 const frameDuration = 1000 / FPS
 
-let dz = 0;
+let dz = 1;
 const dt = 1 / FPS //same as frameDuration but in seconds = delta-time between frames in one second
+
+const vertices = [
+  { x: 0.5, y: 0.5, z: 0.5 },
+  { x: 0.5, y: -0.5, z: 0.5 },
+  { x: -0.5, y: 0.5, z: 0.5 },
+  { x: -0.5, y: -0.5, z: 0.5 },
+
+  { x: 0.5, y: 0.5, z: -0.5 },
+  { x: 0.5, y: -0.5, z: -0.5 },
+  { x: -0.5, y: 0.5, z: -0.5 },
+  { x: -0.5, y: -0.5, z: -0.5 },
+]
+
+
+//clear()
+//point(NdcToScreen(project({ x: 0.5, y: 0.5, z: -0.5 })))
+
+
 
 function frame() {
   dz += 1 * dt;
   clear();
-  point(NdcToScreen(project({ x: 0.5, y: 0.5, z: 1 + dz })));
-  point(NdcToScreen(project({ x: 0.5, y: -0.5, z: 1 + dz })));
-  point(NdcToScreen(project({ x: -0.5, y: 0.5, z: 1 + dz })));
-  point(NdcToScreen(project({ x: -0.5, y: -0.5, z: 1 + dz })));
+
+  for (const v of vertices) {
+    point(NdcToScreen(project(translate_z(v, dz))))
+  }
+
   setTimeout(frame, frameDuration);
 }
 

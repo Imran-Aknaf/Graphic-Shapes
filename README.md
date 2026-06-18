@@ -90,7 +90,18 @@ Insight :
 - the farther something is (big z), the smaller it becomes 
 - x' = x/z; y' = y/z
 
+- again, image a plane with 4 points = vertices of a squarre
+- if you look at it from close distance, vertices seem well spaced
+- but more and more the plan gets back, closer the point gets visually => they tend towards a vanishing point = 0,0
+
 2. Math : 
+
+
+## Important : 
+The projection's math works because we consider ourselve in a world where : 
+- camera is at origin (0,0,0)
+- "view direction" is positive z
+- screen is mathematically defined as the plane z = 1
 
 
 # Animation
@@ -136,3 +147,89 @@ Now it's normalised, whatever your fps, you will always in 1 second , achieve th
 the further the point is (big z), the closer the x and y tend to 0. This is called vanishing point and it's logical from the formula as we divide by z. But also intuitively : 
 
 ![vanishing point](./illustrations/vanishing-point.png)
+
+
+
+# Translation
+
+= moving a point in space : 
+- translation of x => point will move left/right
+- translation of y => point will move up/down
+- translation of z => point will move forward/backward
+
+translation(x,y,z) : (x + tx, y + ty, z + tz)
+
+For animation, we change only z => so we do a "z-translation" : translation_z(x,y,z) : (x, y, z + tz) => this translation control how big things appear
+- why ? because x/z and y/z will make the points of a shape tend toward the center, thus scaling it down. 
+
+
+## Depth is non-linear
+
+- if you start with all your points at z : 0.8 and you play the animation. They seem to move fast toward center
+- but if you start with them all at z : 10, they move slow toward center
+
+- actually, as we know, whatever the z is, it will always increase of 1 every second, so they move the same speed
+
+What actually happens is that : 
+
+- in 1 second, z moves from 0.8 to 1.8. This makes a big difference in x' = x/z between the two frames
+- but when z moves from 10 to 11, the difference between the x' is not that big, so visually the point didn't moved much
+
+- ex : z = 2->3 : 2/2 = 1 vs 2/3 = 0.666 => difference is bigger (0.333)
+- ex : z = 10->11 : 2/10 = 0.2 vs 2/11 = 0.1818.. => difference is smaller (0.18)
+
+Formally :
+
+- projection is : x' = x / z
+- change of point between frame is : Δx' = x/(z + 1) - x/z
+- so if z small => denominator change matter a lot
+- if z is big => denominator barely change result  
+
+
+# Recap #1 :
+
+1. 3D world space : 
+- (x, y, z)
+- final goal : project into canvas = screen
+
+2. 3D to 2D :
+- 2D = NDC space
+- done with x/z, y/z
+- it's a projection at the plane z=1 which is our NDC screen
+
+3. NDC space to Screen space :
+- NDC = special coordinate system = only relativness , no pixels
+- but to see on a certain device, you need a canvas, you need pixels coordinate
+- so we use NdcToScreen({ x, y })
+
+4. Understanding our pov :
+- we (our eyes/pov in canvas), is at (0,0,0) => so z = 0
+- so if we a point at z > 0, it's in front of us => we will see it
+- if z < 0, behind us => we see it's projection but mirrored/inverted 
+
+
+![projection depending on z](./illustrations/projection-mirrored.png)
+
+Also rule of thumb :
+- if x/z or y/z bigger than the range they have [-1,1] => then out of frame/canvas => can't see it
+- being able to see has nothing to do on z being + or - and everything to do on the ration x/z, y/z => so is x,y > z => then can't see 
+
+![projection can be invisible](./illustrations/projection-invisible.png)
+
+the complete idea of point 4 is : 
+
+- point is behind our eyes but far enough behind => then we can see it's projection but mirrored
+- point is behind but too close to our eye's plain => then we can't see it in the screen
+- point is in front of the eye's plan but too close => we can't see it in the screen
+- point is in front but far enough but still before the screen => we can see it , (we will just see it scaled up)
+- point is behind the screen (and of course in front of the eye's) => it will get smaller and smaller the farther behind the screen => so tend to vanishing point
+
+And so now it makes sense that putting dz = 1, means for example instead of starting with one square at -0.5 and the other at 0.5, 
+we start with one squarre at 0.5 and the other at 1.5 which means we directly see all the cube as 0.5 is sufficient distance because 0.5/0.5 = 1 so in range for x,y
+and it will always increase so the 0.5 and 1 will become bigger and bigger and the ratio x/z and y/z will become smaller and smaller => 3D cube scaled down and visible
+
+my conclusion for now is : 
+- we can scale an object by translation along z axis
+
+# Rotate 
+- TODO
