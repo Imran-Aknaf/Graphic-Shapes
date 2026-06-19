@@ -49,10 +49,11 @@ function project({ x, y, z }) {
   }
 }
 
-function translate_z({ x, y, z }, dz) {
+
+function translate({ x, y, z }, dx, dy, dz) {
   return {
-    x: x,
-    y: y,
+    x: x + dx,
+    y: y + dy,
     z: z + dz
   }
 }
@@ -74,6 +75,18 @@ function rotate_xy({ x, y, z }, angle) {
   }
 }
 
+function transform(p) {
+
+  // rotation
+  p = rotate_xz(p, angle);
+
+  // object movement
+  p = translate(p, 0, 0, dz);
+
+
+
+  return p;
+}
 
 
 const FPS = 60
@@ -81,7 +94,7 @@ const frameDuration = 1000 / FPS
 
 let dz = 1;
 let angle = 0;
-const rotations_per_second = 1 / 2
+const rotations_per_second = 1 / 4
 const dt = 1 / FPS //same as frameDuration but in seconds = delta-time between frames in one second
 
 const renderVertex = false
@@ -89,8 +102,8 @@ const renderEdges = true
 
 
 //set the current model to load
-const vs = vs_pen
-const fs = fs_pen
+const vs = vs_cu
+const fs = fs_cu
 
 
 function frame() {
@@ -115,9 +128,14 @@ function frame() {
         let p1 = vs[f[i]]
         let p2 = vs[f[(i + 1) % f.length]]
 
-        line(
+        /*line(
           NdcToScreen(project(translate_z(rotate_xz(p1, angle), dz))),
           NdcToScreen(project(translate_z(rotate_xz(p2, angle), dz)))
+        )*/
+
+        line(
+          NdcToScreen(project(transform(p1))),
+          NdcToScreen(project(transform(p2)))
         )
       }
     }

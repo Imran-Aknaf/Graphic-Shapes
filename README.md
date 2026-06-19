@@ -325,7 +325,7 @@ y' = x * sin(θ) + y * cos(θ)
 
 MODEL SPACE (your vertices) = 3D
         ↓
-translation / rotation (still in 3D)
+translation / rotation (still in 3D) -> here you move your object where u want in space
         ↓
 projection (x/z, y/z) = 2D
         ↓
@@ -343,3 +343,57 @@ And each point can be independenly (all together of course) rotated/translated
 
 ![a cube](./illustrations/cube.png)
 ![a penguin](./illustrations/penguin.png)
+
+# Camera & Models
+
+I have remarqued that the model (files with vertices), have generally z values for each vertex that are close to 0 from + & - (eg : our cube has z = -0.25 or +0.25)
+
+Well it's because when model are designed, they are done around a center (0,0,0) (so in a cube, this is literally the center of the cube in 3D)
+
+But in our system : 
+- Camera = (0, 0, 0)
+- Looking toward +z direction
+- So, will not see anything in negative of z
+
+Example with image of penguin if i only take the original model, here is the camera pov : 
+
+![inside penguin](./illustrations/inside-penguin.png)
+
+So how do we use these model ? 
+- well it's simple => just move the model forward so it's all in the positive z
+- how ? => use translation_z (x,y,z) : return (x,y,z+dz)
+- for example here is the same model but with translation as dz=1 :
+
+![behind penguin](./illustrations/behind-penguin.png)
+
+# Transform(p)
+
+So i just added this function as a way to initiate our model and do any kind of operation in it to place it where we want, and animate it how we want :
+
+- Statically place it somewhere => use translation
+- Statically rotate it => use rotate
+
+- Animated translation/rotate = same thing as static but in a loop where dz/angle change
+
+# Order of operations matter !
+
+1. Rotate
+- important thing to understand is that rotate final formula only work on the assumtion that we rotate around (0,0,0)
+- that means each time you use rotate in the code, you will be rotating you object around (0,0,0)
+
+So what happens between these 2 :
+
+translate_z -> rotate :
+- 1. first we move the object farther => so you see a 3D cube in front
+- 2. then we rotate but around (0,0,0) like always => you will see the 3D cube when rotation is on the +z, but it will dissapear when rotation is behind camera ;as it rotate around (0,0,0)
+
+rotate -> translate_z :
+- 1. your object is initially centered around (0,0,0) like all models
+- 2. you make it rotate => so visually you only see face come and go in front of you (because you are inside the cube + it rotates around camera)
+- 3. then you translate_z => rotated cube shifts forward => center becomes (0,0,dz) 
+- So this is the order that makes the cube "rotate in place" at a certain center (0,0,dz)
+
+
+# Next
+- be able to do whatever we want, for example : place cube left up and make it rotate on itself but without being disorted
+- create the model for all the shapes we need (sphere, pyramid, cylinder, ect..)
