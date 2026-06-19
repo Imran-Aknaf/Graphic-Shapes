@@ -1,3 +1,6 @@
+import { vs_pen, fs_pen } from "./penguin.js"
+import { vs_cu, fs_cu } from "./cube.js"
+
 const BACKGROUND = "black"
 const FOREGROUND = "green"
 
@@ -81,37 +84,13 @@ let angle = 0;
 const rotations_per_second = 1 / 2
 const dt = 1 / FPS //same as frameDuration but in seconds = delta-time between frames in one second
 
-const renderVertex = true
+const renderVertex = false
 const renderEdges = true
 
-const cube_vertices = [
-  { x: 0.25, y: 0.25, z: 0.25 },
-  { x: 0.25, y: -0.25, z: 0.25 },
-  { x: -0.25, y: -0.25, z: 0.25 },
-  { x: -0.25, y: 0.25, z: 0.25 },
 
-  { x: 0.25, y: 0.25, z: -0.25 },
-  { x: 0.25, y: -0.25, z: -0.25 },
-  { x: -0.25, y: -0.25, z: -0.25 },
-  { x: -0.25, y: 0.25, z: -0.25 },
-]
-
-
-const squarre_vertices = [
-  { x: 0.5, y: 0.5, z: 3 },
-  { x: 0.5, y: -0.5, z: 3 },
-  { x: -0.5, y: -0.5, z: 3 },
-  { x: -0.5, y: 0.5, z: 3 },
-]
-
-const faces = [
-  [0, 1, 2, 3],
-  [4, 5, 6, 7],
-  [0, 4],
-  [1, 5],
-  [2, 6],
-  [3, 7]
-]
+//set the current model to load
+const vs = vs_pen
+const fs = fs_pen
 
 
 function frame() {
@@ -122,7 +101,7 @@ function frame() {
 
   //renders vertices
   if (renderVertex) {
-    for (const v of cube_vertices) {
+    for (const v of vs) {
       point(NdcToScreen(project(translate_z(rotate_xz(v, angle), dz))))
 
     }
@@ -131,10 +110,10 @@ function frame() {
 
   //renders edges
   if (renderEdges) {
-    for (const face of faces) {
-      for (let i = 0; i < face.length; i++) {
-        let p1 = cube_vertices[face[i]]
-        let p2 = cube_vertices[face[(i + 1) % face.length]]
+    for (const f of fs) {
+      for (let i = 0; i < f.length; i++) {
+        let p1 = vs[f[i]]
+        let p2 = vs[f[(i + 1) % f.length]]
 
         line(
           NdcToScreen(project(translate_z(rotate_xz(p1, angle), dz))),

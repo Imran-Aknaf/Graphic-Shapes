@@ -334,4 +334,12 @@ NDC (-1 to 1) = strict range
 screen (pixels) = [0, width] & [0, height]
 
 # Vertices & Faces
-TODO
+We already have a sort of simplest possible 3D engine because if you give me a shape (even complex) by giving : 
+- all it's vertices
+- how should they be connected (so the faces)
+
+Then i can draw those vertices & edges
+And each point can be independenly (all together of course) rotated/translated
+
+![a cube](./illustrations/cube.png)
+![a penguin](./illustrations/penguin.png)
