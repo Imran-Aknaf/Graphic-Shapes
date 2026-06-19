@@ -95,6 +95,7 @@ Insight :
 - but more and more the plan gets back, closer the point gets visually => they tend towards a vanishing point = 0,0
 
 2. Math : 
+TODO
 
 
 ## Important : 
@@ -232,4 +233,103 @@ my conclusion for now is :
 - we can scale an object by translation along z axis
 
 # Rotate 
-- TODO
+
+rotation = turns the point around a center
+
+- Take the 2D point (1,0) = (right,center)
+- rotate it 90° => (0,1) = (center, bottom)
+
+The important thing with rotate is : distance from the center stay the same
+
+## From 2D rotation to 3D rotation
+
+To rotate in 3D, we just need to understand 2D rotation
+
+Why ?
+- because every 3D rotation happens inside a plane.
+- eg : rotate in XY plane → z stays constant
+
+- or in another way : rotation is around axis z => z stay constant, only rotate (x,y)
+
+
+Distance to the center stay the same => so what defines the rotation ?
+- the angle θ : define the segment from center where it's extremity is exactly where the new point should be
+- distance to the center
+
+So if distance stay the same, but angle change => this is by definition moving around a circle : 
+- Rotation = moving along a circle
+
+Now image distance to center = 1 , this is the unit circle : 
+- x^2 + y^2 = 1
+- in this circle any points (x,y) = (cos θ, sin θ)
+
+proof : 
+- SOH CAH TOA
+- Sin = Opposite / Hypotenuse => sin θ = opposite/1 = opposite = y
+- Cos = Adjacent / Hypotenuse => cos θ = adjacent/1 = adjacent = x
+
+![proof](./illustrations/rotation1.png)
+
+
+Ok so we know that in this unit circle : (x,y) = (cos θ, sin θ)
+
+Ok so imagine our point at : (x, y) = (cos α, sin α)
+We want to rotate it => of what ? => an angle θ 
+So the angle of (x', y') should be α+θ => (x', y') = (cos(α + θ), sin(α + θ))
+
+Nice we have solved rotation ... well no => there is an issue : 
+- we only know x, y and that we want to rotate of θ
+- so what is missing ? => well the initial α of (x,y) is unknown
+
+We can thus trigonometric identities : 
+cos(α+θ) = cos(α) * cos(θ) − sin(α) * sin(θ)
+sin(α+θ) = sin(α) * cos(θ) + cos(α) * sin(θ)
+
+we can substitute x and y as => x = cos(α) & y = sin(α)
+
+x' = cos(α+θ) = x * cos(θ) - y * sin(θ)
+y' = sin(α+θ) = x * sin(θ) + y * cos(θ)
+
+this is the final formula on rotation
+
+Ok but wait : 
+- x = cos(θ) & y = sin(θ) is only valid for unit circle
+- for a general point P, distance to center != 1
+
+- ok so actually it's okay because everywhere there is always the radius r but we don't see it because it's 1
+
+unit circle = direction only (magnitude=1)
+real point = direction × magnitude
+
+It just becomes :
+- x = r cos(α)
+- y = r sin(α)
+
+- all points in the rotation have same radius so r'=r
+- x' = r cos(α + θ) 
+- y' = r sin(α + θ)
+
+- x' = r (cosα cosθ − sinα sinθ) => x' = r cosα cosθ − r sinα sinθ => x' = (r cos(α)) cosθ − (r sin(α)) sinθ => x' = x cosθ − y sinθ
+
+
+![visually](./illustrations/rotation2.png)
+
+Formula unchanged : 
+
+x' = x * cos(θ) - y * sin(θ)
+y' = x * sin(θ) + y * cos(θ)
+
+# Pipeline 
+
+MODEL SPACE (your vertices) = 3D
+        ↓
+translation / rotation (still in 3D)
+        ↓
+projection (x/z, y/z) = 2D
+        ↓
+NDC (-1 to 1) = strict range
+        ↓
+screen (pixels) = [0, width] & [0, height]
+
+# Vertices & Faces
+TODO

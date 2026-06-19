@@ -15,7 +15,7 @@ function clear() {
 }
 
 function point({ x, y }) {
-  const size = 10
+  const size = 15
   ctx.fillStyle = FOREGROUND
   ctx.fillRect(x - size / 2, y - size / 2, size, size)
 }
@@ -45,38 +45,67 @@ function translate_z({ x, y, z }, dz) {
 }
 
 
+function rotate_xz({ x, y, z }, angle) {
+  return {
+    x: x * Math.cos(angle) - z * Math.sin(angle),
+    y: y,
+    z: x * Math.sin(angle) + z * Math.cos(angle)
+  }
+}
+
+function rotate_xy({ x, y, z }, angle) {
+  return {
+    x: x * Math.cos(angle) - y * Math.sin(angle),
+    y: x * Math.sin(angle) + y * Math.cos(angle),
+    z: z
+  }
+}
+
 
 
 const FPS = 60
 const frameDuration = 1000 / FPS
 
 let dz = 1;
+let angle = 0;
+const rotations_per_second = 1 / 2
 const dt = 1 / FPS //same as frameDuration but in seconds = delta-time between frames in one second
 
-const vertices = [
-  { x: 0.5, y: 0.5, z: 0.5 },
-  { x: 0.5, y: -0.5, z: 0.5 },
-  { x: -0.5, y: 0.5, z: 0.5 },
-  { x: -0.5, y: -0.5, z: 0.5 },
+const cube_vertices = [
+  { x: 0.25, y: 0.25, z: 0.25 },
+  { x: 0.25, y: -0.25, z: 0.25 },
+  { x: -0.25, y: 0.25, z: 0.25 },
+  { x: -0.25, y: -0.25, z: 0.25 },
 
-  { x: 0.5, y: 0.5, z: -0.5 },
-  { x: 0.5, y: -0.5, z: -0.5 },
-  { x: -0.5, y: 0.5, z: -0.5 },
-  { x: -0.5, y: -0.5, z: -0.5 },
+  { x: 0.25, y: 0.25, z: -0.25 },
+  { x: 0.25, y: -0.25, z: -0.25 },
+  { x: -0.25, y: 0.25, z: -0.25 },
+  { x: -0.25, y: -0.25, z: -0.25 },
 ]
 
 
-//clear()
-//point(NdcToScreen(project({ x: 0.5, y: 0.5, z: -0.5 })))
+const squarre_vertices = [
+  { x: 0.5, y: 0.5, z: 3 },
+  { x: 0.5, y: -0.5, z: 3 },
+  { x: -0.5, y: 0.5, z: 3 },
+  { x: -0.5, y: -0.5, z: 3 },
+]
 
 
+/*clear()
+point(NdcToScreen(project({ x: 0.8, y: 0, z: 1 })))
+point(NdcToScreen(project(rotate_xy({ x: 0.8, y: 0, z: 1 }, Math.PI / 2))))
+point(NdcToScreen(project(rotate_xy({ x: 0.8, y: 0, z: 1 }, Math.PI))))*/
 
 function frame() {
-  dz += 1 * dt;
+  //dz += 1 * dt;
+  angle += 2 * Math.PI * dt * rotations_per_second; //will do one complete rotation every second
   clear();
 
-  for (const v of vertices) {
-    point(NdcToScreen(project(translate_z(v, dz))))
+  for (const v of cube_vertices) {
+    //point(NdcToScreen(project(translate_z(v, dz))))
+    point(NdcToScreen(project(translate_z(rotate_xz(v, angle), dz))))
+
   }
 
   setTimeout(frame, frameDuration);
