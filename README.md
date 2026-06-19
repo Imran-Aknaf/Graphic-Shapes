@@ -29,6 +29,8 @@ Conclusion : NDC does not care about absolute pixels => only relative position t
 
 ## NDC coordinate to Screen coordinate
 
+![NDC to Screen coordinates](./illustrations/NDCToScreen.png)
+
 how to go from x ∈ [-1,+1] to x' ∈ [0,w] ?
 - x' = (x+1)*(w/2)
 - y' = (y+1)*(h/2)
