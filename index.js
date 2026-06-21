@@ -1,5 +1,12 @@
 import { vs_pen, fs_pen } from "./penguin.js"
 import { vs_cu, fs_cu } from "./cube.js"
+import { vs_py, fs_py } from "./pyramid.js"
+import { vs_octa, fs_octa } from "./octahedron.js"
+import { vs_cyl, fs_cyl } from "./cylinder.js"
+import { vs_con, fs_con } from "./cone.js"
+import { vs_uv, fs_uv } from "./UVsphere.js"
+import { vs_ico, fs_ico } from "./icosahedron.js"
+import { vs_tor, fs_tor } from "./torus.js"
 
 const BACKGROUND = "black"
 const FOREGROUND = "green"
@@ -7,8 +14,15 @@ const FOREGROUND = "green"
 console.log("displaying thing...")
 const canvas = document.getElementById("canvas");
 
-canvas.width = 500
-canvas.height = 500
+function resize() {
+  //keep it a squarre
+  canvas.width = window.innerHeight
+  canvas.height = window.innerHeight
+}
+
+window.addEventListener("resize", resize)
+
+
 
 const ctx = canvas.getContext("2d");
 
@@ -75,15 +89,21 @@ function rotate_xy({ x, y, z }, angle) {
   }
 }
 
+function rotate_yz({ x, y, z }, angle) {
+  return {
+    x: x,
+    y: y * Math.cos(angle) - z * Math.sin(angle),
+    z: y * Math.sin(angle) + z * Math.cos(angle)
+  }
+}
+
 function transform(p) {
 
   // rotation
-  p = rotate_xz(p, angle);
+  p = rotate_yz(p, angle);
 
-  // object movement
+  // movement
   p = translate(p, 0, 0, dz);
-
-
 
   return p;
 }
@@ -102,8 +122,8 @@ const renderEdges = true
 
 
 //set the current model to load
-const vs = vs_cu
-const fs = fs_cu
+const vs = vs_tor
+const fs = fs_tor
 
 
 function frame() {
@@ -115,7 +135,7 @@ function frame() {
   //renders vertices
   if (renderVertex) {
     for (const v of vs) {
-      point(NdcToScreen(project(translate_z(rotate_xz(v, angle), dz))))
+      point(NdcToScreen(project(transform(v))))
 
     }
   }
