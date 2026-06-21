@@ -3,7 +3,7 @@ export const vs_py = [
   { x: 0.25, y: -0.25, z: -0.25 },
   { x: 0.25, y: -0.25, z: 0.25 },
   { x: -0.25, y: -0.25, z: 0.25 },
-  { x: 0, y: 0.25, z: 0 }, //apex
+  { x: 0, y: 0.75, z: 0 }, //apex
 ]
 
 export const fs_py = [

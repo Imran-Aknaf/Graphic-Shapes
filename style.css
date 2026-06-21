@@ -1,0 +1,88 @@
+/*
+body is a parent/container of canvas
+to place an item/child in the horizontal center of the container/parent : 
+- display: flex;
+- justify-content: center;
+*/
+
+body {
+  /*<body> has default margin (= 8px)*/
+  margin: 0;
+
+  background-color: black;
+  /* Hide scrollbars */
+  overflow: hidden;
+
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+div {
+  margin: 0;
+}
+
+/*
+Grid is : 
+1. a grid container = the parent = display : grid
+2. children of it automatically become grid elements
+*/
+
+#menu {
+
+  position: fixed;
+  /*full screen*/
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
+
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  grid-template-rows: 1fr 1fr 1fr;
+
+  background-color: black;
+}
+
+.menu-box {
+  background-color: burlywood;
+  color: white;
+  /*space around each box*/
+  /*gap: 15px;*/
+
+  /*border of box*/
+  border: 2px solid black;
+
+  /*text centered*/
+  display: flex;
+  justify-content: center;
+  align-items: center;
+
+  font-size: 2rem;
+  cursor: pointer;
+}
+
+#canvas {
+  display: none;
+}
+
+#back-button {
+  position: fixed;
+  z-index: 10;
+  right: 20px;
+  top: 20px;
+
+  padding: 10px 30px;
+  font-size: 16px;
+
+  background-color: white;
+  color: red;
+
+  border: 2px solid green;
+
+  cursor: pointer;
+
+  /*only appears in canvas mode*/
+  display: none;
+
+}

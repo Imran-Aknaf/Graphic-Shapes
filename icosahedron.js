@@ -1,5 +1,5 @@
 const phi = (1 + Math.sqrt(5)) / 2
-const size = 0.25
+const size = 0.3
 
 function scale({ x, y, z }) {
   return {

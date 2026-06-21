@@ -11,14 +11,71 @@ import { vs_tor, fs_tor } from "./torus.js"
 const BACKGROUND = "black"
 const FOREGROUND = "green"
 
-console.log("displaying thing...")
+const models = [
+  { name: "Cube", vs: vs_cu, fs: fs_cu },
+  { name: "Pyramid", vs: vs_py, fs: fs_py },
+  { name: "Octahedron", vs: vs_octa, fs: fs_octa },
+  { name: "Cylinder", vs: vs_cyl, fs: fs_cyl },
+  { name: "Cone", vs: vs_con, fs: fs_con },
+  { name: "Icosahedron", vs: vs_ico, fs: fs_ico },
+  { name: "UV Sphere", vs: vs_uv, fs: fs_uv },
+  { name: "Torus", vs: vs_tor, fs: fs_tor },
+  { name: "Penguin", vs: vs_pen, fs: fs_pen }
+]
+
+/**
+ * Later, add more metadata to models : 
+ * {
+  name: "Torus",
+  vs: vs_tor,
+  fs: fs_tor,
+  dz: 1.5,
+  rotationAxis: "yz"
+  }
+ */
+
+let currentModel = models[0];
+
+console.log("starting...")
+
 const canvas = document.getElementById("canvas");
+const menu = document.getElementById("menu")
+const backbutton = document.getElementById("back-button")
+
+//canvas.style.display = "none"
+
+backbutton.addEventListener("click", () => {
+  menu.style.display = "grid"
+  canvas.style.display = "none"
+  backbutton.style.display = "none"
+})
+
+for (const model of models) {
+  const box = document.createElement("div")
+  box.className = "menu-box"
+  box.textContent = model.name
+
+  box.addEventListener("click", () => {
+    currentModel = model
+
+    menu.style.display = "none"
+    canvas.style.display = "block"
+    backbutton.style.display = "block"
+  })
+
+
+  menu.appendChild(box)
+}
+
+
 
 function resize() {
-  //keep it a squarre
+  //keep it a square
   canvas.width = window.innerHeight
   canvas.height = window.innerHeight
 }
+
+resize() //initial resize
 
 window.addEventListener("resize", resize)
 
@@ -99,8 +156,12 @@ function rotate_yz({ x, y, z }, angle) {
 
 function transform(p) {
 
-  // rotation
-  p = rotate_yz(p, angle);
+  if (currentModel.name == "Torus") {
+    // rotation
+    p = rotate_yz(p, angle);
+  } else {
+    p = rotate_xz(p, angle)
+  }
 
   // movement
   p = translate(p, 0, 0, dz);
@@ -122,8 +183,8 @@ const renderEdges = true
 
 
 //set the current model to load
-const vs = vs_tor
-const fs = fs_tor
+//const vs = vs_ico
+//const fs = fs_ico
 
 
 function frame() {
@@ -134,7 +195,7 @@ function frame() {
 
   //renders vertices
   if (renderVertex) {
-    for (const v of vs) {
+    for (const v of currentModel.vs) {
       point(NdcToScreen(project(transform(v))))
 
     }
@@ -143,10 +204,10 @@ function frame() {
 
   //renders edges
   if (renderEdges) {
-    for (const f of fs) {
+    for (const f of currentModel.fs) {
       for (let i = 0; i < f.length; i++) {
-        let p1 = vs[f[i]]
-        let p2 = vs[f[(i + 1) % f.length]]
+        let p1 = currentModel.vs[f[i]]
+        let p2 = currentModel.vs[f[(i + 1) % f.length]]
 
         /*line(
           NdcToScreen(project(translate_z(rotate_xz(p1, angle), dz))),
