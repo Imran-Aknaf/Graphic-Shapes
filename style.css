@@ -45,21 +45,40 @@ Grid is :
 }
 
 .menu-box {
-  background-color: burlywood;
-  color: white;
-  /*space around each box*/
-  /*gap: 15px;*/
+  background-color: black;
+  border: 2px solid white;
 
-  /*border of box*/
-  border: 2px solid black;
-
-  /*text centered*/
   display: flex;
-  justify-content: center;
-  align-items: center;
+  flex-direction: column;
+  /*justify-content: center;*/
 
-  font-size: 2rem;
+  /* important : will make title & canvas centered horizontaly*/
+  /*align-items: center;*/
+
+  align-items: center;
+  justify-content: flex-start;
+
   cursor: pointer;
+
+}
+
+.menu-title {
+  height: 40px;
+  width: 100%;
+  color: white;
+  font-size: 1.2rem;
+
+  text-align: center;
+  line-height: 40px;
+  /*Align text vertically along the 40 px*/
+}
+
+.preview-canvas {
+  display: block;
+  flex-grow: 1;
+  /*should take the whole remaining height space*/
+
+  /*rest is defined in JS*/
 }
 
 #canvas {
@@ -85,4 +104,24 @@ Grid is :
   /*only appears in canvas mode*/
   display: none;
 
+}
+
+#ui {
+  position: fixed;
+  top: 10px;
+  left: 10px;
+  z-index: 10;
+
+  /*flex : automatic horizontal alignment*/
+  display: flex;
+  /*gap : space between child=btn*/
+  gap: 10px;
+  display: none;
+}
+
+#ui button {
+  padding: 8px 12px;
+  cursor: pointer;
+
+  /*only appears in canvas mode*/
 }

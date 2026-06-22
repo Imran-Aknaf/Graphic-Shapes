@@ -394,6 +394,15 @@ rotate -> translate_z :
 - So this is the order that makes the cube "rotate in place" at a certain center (0,0,dz)
 
 
-# Next
-- be able to do whatever we want, for example : place cube left up and make it rotate on itself but without being disorted
-- create the model for all the shapes we need (sphere, pyramid, cylinder, ect..)
+# Time for a class 
+I'm now to the point i have many shape being rendered at once : 
+- 9 for all canvas preview in selection menu
+- 1 in the background that change dynamically based on what is clicked and is displayed then
+
+But all the functions i have use some global var "Canvas" & "CurrentModel"
+It's hard to pass params to each function to give the right vars, so better is to understand now is the time for classes , because :  
+
+each shape is rendered in it's own universe with it's own : 
+- canvas
+- 2D context
+- model
