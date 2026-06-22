@@ -406,3 +406,21 @@ each shape is rendered in it's own universe with it's own :
 - canvas
 - 2D context
 - model
+
+
+# Camera
+So first my initial intuition :
+
+- we are not really "moving" in this space, but we just want to make us feel like we are moving. 
+- for example if i press right -> i want to see the shape from the right side, making me see less of it's less side and more of it's right side, but also making the shape not anymore centered
+
+So the idea is that we want to simulate this through transformation on the shape, namely : translation and rotation
+
+for example here, when clicking on right arrow to move camera right we actually do :
+- translate shape left of this amount
+
+So basically just need to apply for every vertices : 
+p = translate(p, -camera.x, -camera.y, -camera.z) to make the camera "move"
+
+
+

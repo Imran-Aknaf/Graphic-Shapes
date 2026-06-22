@@ -36,6 +36,32 @@ const models = [
   }
  */
 
+const keys = {}
+
+document.addEventListener("keydown", e => {
+  keys[e.key] = true
+})
+
+document.addEventListener("keyup", e => {
+  keys[e.key] = false
+})
+
+function updateCamera(camera) {
+  const d = 0.05
+
+  if (keys["z"]) camera.move(0, 0, d)
+  if (keys["s"]) camera.move(0, 0, -d)
+
+  if (keys["q"]) camera.move(-d, 0, 0)
+  if (keys["d"]) camera.move(d, 0, 0);
+
+  if (keys["a"]) camera.move(0, d, 0)
+  if (keys["e"]) camera.move(0, -d, 0)
+}
+
+
+
+
 let currentModel = models[0];
 
 const canvas = document.getElementById("canvas");
@@ -49,6 +75,8 @@ backbutton.addEventListener("click", () => {
   canvas.style.display = "none"
   backbutton.style.display = "none"
   ui.style.display = "none"
+
+  mainRenderer.stop()
 })
 
 
@@ -72,6 +100,8 @@ for (const model of models) {
     canvas.style.display = "block"
     backbutton.style.display = "block"
     ui.style.display = "block"
+
+    mainRenderer.start()
   })
 
   box.appendChild(title)
@@ -106,156 +136,28 @@ resizeAllPreviews()
 window.addEventListener("resize", resize)
 //window.addEventListener("resize", resizeAllPreviews)
 
-/*
-const ctx = canvas.getContext("2d");
 
-function clear() {
-  ctx.fillStyle = BACKGROUND
-  ctx.fillRect(0, 0, canvas.width, canvas.height)
-}
-
-function line(p1, p2) {
-  ctx.lineWidth = 3
-  ctx.strokeStyle = FOREGROUND
-  ctx.beginPath()
-  ctx.moveTo(p1.x, p1.y)
-  ctx.lineTo(p2.x, p2.y)
-  ctx.stroke()
-}
-
-
-function point({ x, y }) {
-  const size = 15
-  ctx.fillStyle = FOREGROUND
-  ctx.fillRect(x - size / 2, y - size / 2, size, size)
-}
-
-function NdcToScreen({ x, y }) {
-  //[-1,1] --> [0,2] --> [0,1] --> [0,w] : x' = (x+1)/2 * w
-  //[1,-1] --> [0,2] -> [0,1] -> [0,h] : y' = (1-y)/2 * h  
-  return {
-    x: (x + 1) / 2 * canvas.width,
-    y: (1 - y) / 2 * canvas.height
-  }
-}
-
-function project({ x, y, z }) {
-  return {
-    x: x / z,
-    y: y / z
-  }
-}
-
-
-function translate({ x, y, z }, dx, dy, dz) {
-  return {
-    x: x + dx,
-    y: y + dy,
-    z: z + dz
-  }
-}
-
-
-function rotate_xz({ x, y, z }, angle) {
-  return {
-    x: x * Math.cos(angle) - z * Math.sin(angle),
-    y: y,
-    z: x * Math.sin(angle) + z * Math.cos(angle)
-  }
-}
-
-function rotate_xy({ x, y, z }, angle) {
-  return {
-    x: x * Math.cos(angle) - y * Math.sin(angle),
-    y: x * Math.sin(angle) + y * Math.cos(angle),
-    z: z
-  }
-}
-
-function rotate_yz({ x, y, z }, angle) {
-  return {
-    x: x,
-    y: y * Math.cos(angle) - z * Math.sin(angle),
-    z: y * Math.sin(angle) + z * Math.cos(angle)
-  }
-}
-
-function transform(p) {
-
-  if (currentModel.name == "Torus") {
-    // rotation
-    p = rotate_yz(p, angle);
-  } else {
-    p = rotate_xz(p, angle)
+class Camera {
+  constructor() {
+    this.x = 0
+    this.y = 0
+    this.z = 0
   }
 
-  // movement
-  p = translate(p, 0, 0, dz);
-
-  return p;
-}
-
-
-const FPS = 60
-const frameDuration = 1000 / FPS
-
-let dz = 1;
-let angle = 0;
-const rotations_per_second = 1 / 4
-const dt = 1 / FPS //same as frameDuration but in seconds = delta-time between frames in one second
-
-const renderVertex = false
-const renderEdges = true
-
-
-//set the current model to load
-//const vs = vs_ico
-//const fs = fs_ico
-
-
-function frame() {
-  //dz += 1 * dt; //will move of +1 every second
-  angle += 2 * Math.PI * dt * rotations_per_second; //will do one complete rotation every second
-
-  clear();
-
-  //renders vertices
-  if (renderVertex) {
-    for (const v of currentModel.vs) {
-      point(NdcToScreen(project(transform(v))))
-
-    }
+  move(dx, dy, dz) {
+    this.x += dx
+    this.y += dy
+    this.z += dz
   }
-
-
-  //renders edges
-  if (renderEdges) {
-    for (const f of currentModel.fs) {
-      for (let i = 0; i < f.length; i++) {
-        let p1 = currentModel.vs[f[i]]
-        let p2 = currentModel.vs[f[(i + 1) % f.length]]
-
-        line(
-          NdcToScreen(project(transform(p1))),
-          NdcToScreen(project(transform(p2)))
-        )
-      }
-    }
-  }
-
-
-  setTimeout(frame, frameDuration);
 }
-
-setTimeout(frame, frameDuration);*/
-
-
 
 class Renderer {
-  constructor(canvas, model) {
+  constructor(canvas, model, options) {
     this.canvas = canvas
     this.model = model
     this.ctx = this.canvas.getContext("2d")
+
+    this.camera = options.camera || null
 
     this.angle = 0
     this.dx = 0
@@ -271,10 +173,14 @@ class Renderer {
 
     this.BACKGROUND = "black"
     this.FOREGROUND = "green"
-    this.vertexSize = 15
 
-    this.showVertices = false
-    this.showEdges = true
+    this.vertexSize = 15
+    this.vertexShape = "circle"
+
+    this.showVertices = options.showVertices ?? false //default value
+    this.showEdges = options.showEdges ?? true //default value
+
+    this.running = false;
   }
 
   toggleVertices() {
@@ -305,7 +211,14 @@ class Renderer {
   point({ x, y }) {
     //const size = 15
     this.ctx.fillStyle = this.FOREGROUND
-    this.ctx.fillRect(x - this.vertexSize / 2, y - this.vertexSize / 2, this.vertexSize, this.vertexSize)
+    if (this.vertexShape == "square") {
+      this.ctx.fillRect(x - this.vertexSize / 2, y - this.vertexSize / 2, this.vertexSize, this.vertexSize)
+    }
+    else if (this.vertexShape == "circle") {
+      this.ctx.beginPath()
+      this.ctx.arc(x, y, this.vertexSize / 2, 0, 2 * Math.PI)
+      this.ctx.fill()
+    }
   }
 
 
@@ -325,11 +238,11 @@ class Renderer {
     }
   }
 
-  translate({ x, y, z }) {
+  translate({ x, y, z }, dx, dy, dz) {
     return {
-      x: x + this.dx,
-      y: y + this.dy,
-      z: z + this.dz
+      x: x + dx,
+      y: y + dy,
+      z: z + dz
     }
   }
 
@@ -358,8 +271,7 @@ class Renderer {
     }
   }
 
-  transform(p) {
-
+  worldTransform(p) {
     if (this.model.name == "Torus") {
       // rotation
       p = this.rotate_yz(p);
@@ -368,15 +280,34 @@ class Renderer {
     }
 
     // movement
-    p = this.translate(p);
+    p = this.translate(p, this.dx, this.dy, this.dz);
 
-    return p;
+    return p
   }
 
+  cameraTransform(p) {
 
-  update_params() {
+    if (!this.camera) return p
+
+    // camera movement
+    return this.translate(p, -this.camera.x, -this.camera.y, -this.camera.z);
+  }
+
+  transform(p) {
+    p = this.worldTransform(p)
+    p = this.cameraTransform(p)
+
+    return p
+  }
+
+  update() {
     this.angle += 2 * Math.PI * this.dt * this.rotations_per_second;
+
     //this.dz += 1 * this.dt; //will move back of +1 every second
+
+    if (this.camera) {
+      updateCamera(this.camera)
+    }
   }
 
   draw_vertices() {
@@ -410,26 +341,35 @@ class Renderer {
   }
 
   frame() {
-    this.update_params()
+    if (!this.running) return
+    this.update()
     this.draw()
 
     setTimeout(() => this.frame(), this.frameDuration)
   }
 
   start() {
-    //setTimeout(this.frame, this.frameDuration);
-    this.frame()
+    if (!this.running) {
+      this.running = true
+      this.frame()
+    }
+  }
+
+  stop() {
+    this.running = false
   }
 }
 
 
 
 for (let { previewCanvas, title, box, model } of previews) {
-  const r = new Renderer(previewCanvas, model)
+  const r = new Renderer(previewCanvas, model, { showEdges: true })
   r.start()
 }
 
-const mainRenderer = new Renderer(canvas, currentModel)
+
+const camera = new Camera();
+const mainRenderer = new Renderer(canvas, currentModel, { showEdges: true, camera: camera })
 mainRenderer.start()
 
 document.getElementById("vertex-button").addEventListener("click", () => {
