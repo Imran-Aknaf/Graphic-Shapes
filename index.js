@@ -22,6 +22,12 @@ const models = [
   { name: "Penguin", vs: vs_pen, fs: fs_pen }
 ]
 
+const distinctColors = [
+  '#e6194B', '#3cb44b', '#ffe119', '#4363d8', '#f58231', '#911eb4',
+  '#42d4f4', '#f032e6', '#bfef45', '#fabed4', '#469990', '#dcbeff'
+];
+
+
 /**
  * Later, add more metadata to models : 
  * {
@@ -94,8 +100,8 @@ function updateCamera(camera) {
     camera.z -= right.z * moveSpeed
   }
 
-  //if (keys["a"]) camera.y += moveSpeed
-  //if (keys["e"]) camera.y -= moveSpeed
+  if (keys["a"]) camera.y += moveSpeed
+  if (keys["e"]) camera.y -= moveSpeed
 }
 
 
@@ -133,7 +139,7 @@ for (const model of models) {
   previewCanvas.className = "preview-canvas"
 
   box.addEventListener("click", () => {
-    mainRenderer.model = model
+    mainRenderer.setModel(model)
 
     menu.style.display = "none"
     canvas.style.display = "block"
@@ -226,8 +232,28 @@ class Renderer {
 
     this.showVertices = options.showVertices ?? false //default value
     this.showEdges = options.showEdges ?? true //default value
+    this.showColors = options.showColors ?? false //default value
+
+    this.colors = this.initColors()
+
 
     this.running = false;
+  }
+
+  setModel(model) {
+    this.model = model
+    this.colors = this.initColors()
+
+  }
+
+  initColors() {
+    const colors = []
+
+    for (let i = 0; i < this.model.fs.length; i++) {
+      colors[i] = distinctColors[Math.floor(Math.random() * distinctColors.length)]
+
+    }
+    return colors
   }
 
   toggleVertices() {
@@ -238,15 +264,20 @@ class Renderer {
     this.showEdges = !this.showEdges
   }
 
+  toggleColors() {
+    this.showColors = !this.showColors
+  }
+
   clear() {
     this.ctx.fillStyle = "black";
     this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
   }
 
 
-  line(p1, p2) {
+  line(p1, p2, color) {
     this.ctx.lineWidth = 3
-    this.ctx.strokeStyle = this.FOREGROUND
+    //this.ctx.strokeStyle = this.FOREGROUND
+    this.ctx.strokeStyle = color
 
     this.ctx.beginPath()
     this.ctx.moveTo(p1.x, p1.y)
@@ -368,14 +399,17 @@ class Renderer {
     for (const v of this.model.vs) {
       const p = this.transform(v)
 
+      //don't draw thing if too close to camera
       if (p.z < 0.1) continue;
+
       this.point(this.NdcToScreen(this.project(p)))
-      //this.point(this.NdcToScreen(this.project(this.transform(v))))
     }
   }
 
   draw_edges() {
-    for (const f of this.model.fs) {
+    //for (const f of this.model.fs) {
+    for (let j = 0; j < this.model.fs.length; j++) {
+      const f = this.model.fs[j]
       for (let i = 0; i < f.length; i++) {
         let p1 = this.model.vs[f[i]]
         let p2 = this.model.vs[f[(i + 1) % f.length]]
@@ -383,20 +417,21 @@ class Renderer {
         p1 = this.transform(p1)
         p2 = this.transform(p2)
 
+        //don't draw line if too close from camera
         if (p1.z < 0.1 || p2.z < 0.1) continue;
+
+        const color = this.showColors ? this.colors[j] : this.FOREGROUND;
 
         this.line(
           this.NdcToScreen(this.project(p1)),
-          this.NdcToScreen(this.project(p2))
+          this.NdcToScreen(this.project(p2)),
+          color
         );
 
-        /*this.line(
-          this.NdcToScreen(this.project(this.transform(p1))),
-          this.NdcToScreen(this.project(this.transform(p2)))
-        )*/
       }
     }
   }
+
 
   draw() {
     this.clear()
@@ -437,7 +472,7 @@ for (let { previewCanvas, title, box, model } of previews) {
 
 
 const camera = new Camera();
-const mainRenderer = new Renderer(canvas, currentModel, { showEdges: true, camera: camera })
+const mainRenderer = new Renderer(canvas, currentModel, { camera: camera, showEdges: true, showColors: true })
 mainRenderer.start()
 
 document.getElementById("vertex-button").addEventListener("click", () => {
@@ -447,3 +482,7 @@ document.getElementById("vertex-button").addEventListener("click", () => {
 document.getElementById("edge-button").addEventListener("click", () => {
   mainRenderer.toggleEdges();
 });
+
+document.getElementById("color-button").addEventListener("click", () => {
+  mainRenderer.toggleColors();
+})
