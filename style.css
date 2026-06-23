@@ -106,22 +106,43 @@ Grid is :
 
 }
 
-#ui {
+#shape-ui {
   position: fixed;
   top: 10px;
   left: 10px;
   z-index: 10;
 
-  /*flex : automatic horizontal alignment*/
-  display: flex;
   /*gap : space between child=btn*/
   gap: 10px;
   display: none;
 }
 
-#ui button {
+
+#camera-ui {
+  position: fixed;
+  top: 60px;
+  left: 10px;
+  z-index: 10;
+
+  /*gap : space between child=btn*/
+  gap: 10px;
+  display: none;
+}
+
+.ui-button {
+
   padding: 8px 12px;
   cursor: pointer;
 
-  /*only appears in canvas mode*/
+  border-radius: 8px;
+
+  background: #222;
+  color: white;
+
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.ui-button.active {
+  background: #3cb44b;
+  color: black;
 }

@@ -112,14 +112,17 @@ let currentModel = models[0];
 const canvas = document.getElementById("canvas");
 const menu = document.getElementById("menu")
 const backbutton = document.getElementById("back-button")
-const ui = document.getElementById("ui")
-
+const shapeUI = document.getElementById("shape-ui")
+const cameraUI = document.getElementById("camera-ui")
 
 backbutton.addEventListener("click", () => {
   menu.style.display = "grid"
   canvas.style.display = "none"
+
   backbutton.style.display = "none"
-  ui.style.display = "none"
+
+  shapeUI.style.display = "none"
+  cameraUI.style.display = "none"
 
   mainRenderer.stop()
 })
@@ -143,8 +146,11 @@ for (const model of models) {
 
     menu.style.display = "none"
     canvas.style.display = "block"
+
     backbutton.style.display = "block"
-    ui.style.display = "block"
+
+    shapeUI.style.display = "flex"
+    cameraUI.style.display = "flex"
 
     mainRenderer.start()
   })
@@ -201,6 +207,15 @@ class Camera {
     const limit = range * Math.PI / 180
     if (this.pitch > limit) this.pitch = limit
     if (this.pitch < -limit) this.pitch = -limit
+  }
+
+  reset() {
+    this.x = 0
+    this.y = 0
+    this.z = 0
+
+    this.yaw = 0
+    this.pitch = 0
   }
 }
 
@@ -475,14 +490,31 @@ const camera = new Camera();
 const mainRenderer = new Renderer(canvas, currentModel, { camera: camera, showEdges: true, showColors: true })
 mainRenderer.start()
 
-document.getElementById("vertex-button").addEventListener("click", () => {
+
+
+const vertexBtn = document.getElementById("vertex-button");
+const edgeBtn = document.getElementById("edge-button");
+const colorBtn = document.getElementById("color-button");
+
+vertexBtn.classList.toggle("active", mainRenderer.showVertices);
+edgeBtn.classList.toggle("active", mainRenderer.showEdges);
+colorBtn.classList.toggle("active", mainRenderer.showColors);
+
+vertexBtn.addEventListener("click", () => {
   mainRenderer.toggleVertices();
+  vertexBtn.classList.toggle("active", mainRenderer.showVertices);
 });
 
-document.getElementById("edge-button").addEventListener("click", () => {
+edgeBtn.addEventListener("click", () => {
   mainRenderer.toggleEdges();
+  edgeBtn.classList.toggle("active", mainRenderer.showEdges);
 });
 
-document.getElementById("color-button").addEventListener("click", () => {
+colorBtn.addEventListener("click", () => {
   mainRenderer.toggleColors();
+  colorBtn.classList.toggle("active", mainRenderer.showColors);
+});
+
+document.getElementById("reset-button").addEventListener("click", () => {
+  mainRenderer.camera.reset();
 })

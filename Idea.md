@@ -3,7 +3,7 @@
 
 2. Camera : 
 - need to be able to move in the scene and see shape from anywhere [/]
-- add to UI reset button to default position & rotation
+- add to UI reset button to default position & rotation [/]
 
 3. filled face, hidden surface & texture : 
 - need to have a button to activate/desactivate anywhere in this chain : vertices → edges → filled face → hidden surface → texture 
