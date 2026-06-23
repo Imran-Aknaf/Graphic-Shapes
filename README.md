@@ -419,8 +419,110 @@ So the idea is that we want to simulate this through transformation on the shape
 for example here, when clicking on right arrow to move camera right we actually do :
 - translate shape left of this amount
 
-So basically just need to apply for every vertices : 
-p = translate(p, -camera.x, -camera.y, -camera.z) to make the camera "move"
+And for rotation, my intuition :
+
+- basically there is 3 ways of rotating , rotatating on the circle that is in the plane XY, XZ, YZ
+- but for a specific plane, you just have a circle right
+- and what do we know about circle 
+- well we know that to get a point on it it's just : cos(angle), sin(angle)
+
+okay so now if camera rotates right (yaw +θ) -> it just means we should rotate the world left (-θ)
+same idea for the other axes/plane
 
 
+So in general if : 
+- camera has "fake" position C , "fake" rotation R
 
+1. translate world : 
+- P1 = P - C
+
+2. rotate world opposite camera rotation
+
+
+## Camera Translation 
+- up/down
+- right/left
+- front/back
+
+How ?
+- just do oppositive of camera movement for every vertex : 
+- p = translate(p, -camera.x, -camera.y, -camera.z) to make the camera "move"
+
+## Camera Rotation 
+- yaw (left/right)
+- pitch (up/down)
+- roll (tilt)
+
+How ?
+- just use -angle in the rotate to basically make the object rotate in the opposite way making you fill like you do camera rotation
+
+![camera movements](./illustrations/camera-movement.png)
+![camera movements](./illustrations/camera-movement2.png)
+
+## But this is not enough :
+- right now if we turn our "head" right, then move forward, we move forward in the globally defined z axis and not in the direction where camera is facing
+- it's not like FPS pov right now
+
+
+A camera has 2 things :
+- a position <x,y,z>
+- a direction where it's looking
+
+When camera rotates, 3 vectors are changed : 
+- Right vector → where "right" is → sideways direction
+- Up vector → where "up" is → vertical direction
+- Forward vector → where "forward" is → direction it looks
+
+Let's first focus only on Yaw = turning your head left/right 
+
+Assume Y-axis is the "up" vector, that means here we rotate around Y. 
+We thus have this plane XZ : 
+
+        Z+
+        ^
+        |
+X- <--- + ---> X+
+        |
+        v
+        Z-
+
+When yaw = 0 => it means u are looking in forward => so vector for forward is logically : forward = (0, 0, 1)
+You can already see that in this position :
+- moving forward will mean doing +Z
+- moving right will mean doing +X
+- moving left => -X
+- moving backward => -Z
+
+Ok but what happens after we rotate the forward vector around Y ?
+
+Rotation around Y axis:
+x' = x cos(yaw) + z sin(yaw)
+z' = -x sin(yaw) + z cos(yaw)
+
+So on our current forward vector (0,0,1) : 
+x' = x * cos + 1 * sin = sin(yaw)
+z = -0 * sin + 1 * cos = cos(yaw)
+
+
+after rotation : forward = (sin(yaw), 0, cos(yaw)) => this is the general formula to re-compute forward direction when camera rotation happen
+
+Ok now what about when we want to move right ?
+
+- well we can use our precedent work, as moving right is just moving along the vector that is forward vector rotated by 90°
+- and in math we know that when u have a vector (x,z) and rotate it by 90° right, it becomes (z,-x), proof under : 
+
+!["rotate right formula"](./illustrations/rotate-right.png)
+
+So in our case forward vector is always : (sin(yaw), 0, cos(yaw))
+right vector is always : (cos(yaw), 0, -sin(yaw))
+
+
+So finally we have these camera movement rules : 
+
+Forward / Backward:
+- pos += forward * speed
+- pos -= forward * speed (opposite direction)
+
+Right / Left:
+pos += right * speed
+pos -= right * speed (opposite direction)

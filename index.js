@@ -47,16 +47,57 @@ document.addEventListener("keyup", e => {
 })
 
 function updateCamera(camera) {
-  const d = 0.05
+  const moveSpeed = 0.05
+  const rotSpeed = 0.03
 
-  if (keys["z"]) camera.move(0, 0, d)
-  if (keys["s"]) camera.move(0, 0, -d)
+  //rotation 
+  if (keys["ArrowLeft"]) camera.rotate(-rotSpeed)
+  if (keys["ArrowRight"]) camera.rotate(rotSpeed)
 
-  if (keys["q"]) camera.move(-d, 0, 0)
-  if (keys["d"]) camera.move(d, 0, 0);
 
-  if (keys["a"]) camera.move(0, d, 0)
-  if (keys["e"]) camera.move(0, -d, 0)
+
+  //forward & right vector from any angle yaw of camera (we consider yaw = 0 when forward = (0,0,1) & concluded this formula's)
+
+  // (0,0,1) by default as camera.yaw = 0°
+  const forward = {
+    x: -Math.sin(camera.yaw),
+    y: 0,
+    z: Math.cos(camera.yaw)
+  }
+
+  const right = {
+    x: Math.cos(camera.yaw),
+    y: 0,
+    z: Math.sin(camera.yaw)
+  }
+
+  //movement 
+  if (keys["z"]) {
+    camera.x += forward.x * moveSpeed
+    camera.y += forward.y * moveSpeed
+    camera.z += forward.z * moveSpeed
+  }
+
+  if (keys["s"]) {
+    camera.x -= forward.x * moveSpeed
+    camera.y -= forward.y * moveSpeed // Descend si on regarde en haut
+    camera.z -= forward.z * moveSpeed
+  }
+
+  if (keys["d"]) {
+    camera.x += right.x * moveSpeed
+    camera.y += right.y * moveSpeed
+    camera.z += right.z * moveSpeed
+  }
+
+  if (keys["q"]) {
+    camera.x -= right.x * moveSpeed
+    camera.y -= right.y * moveSpeed
+    camera.z -= right.z * moveSpeed
+  }
+
+  //if (keys["a"]) camera.y += moveSpeed
+  //if (keys["e"]) camera.y -= moveSpeed
 }
 
 
@@ -142,12 +183,12 @@ class Camera {
     this.x = 0
     this.y = 0
     this.z = 0
+
+    this.yaw = 0 //left-right
   }
 
-  move(dx, dy, dz) {
-    this.x += dx
-    this.y += dy
-    this.z += dz
+  rotate(dYaw) {
+    this.yaw += dYaw
   }
 }
 
@@ -247,36 +288,36 @@ class Renderer {
   }
 
 
-  rotate_xz({ x, y, z }) {
+  rotate_xz({ x, y, z }, angle) {
     return {
-      x: x * Math.cos(this.angle) - z * Math.sin(this.angle),
+      x: x * Math.cos(angle) - z * Math.sin(angle),
       y: y,
-      z: x * Math.sin(this.angle) + z * Math.cos(this.angle)
+      z: x * Math.sin(angle) + z * Math.cos(angle)
     }
   }
 
-  rotate_xy({ x, y, z }) {
+  rotate_xy({ x, y, z }, angle) {
     return {
-      x: x * Math.cos(this.angle) - y * Math.sin(this.angle),
-      y: x * Math.sin(this.angle) + y * Math.cos(this.angle),
+      x: x * Math.cos(angle) - y * Math.sin(angle),
+      y: x * Math.sin(angle) + y * Math.cos(angle),
       z: z
     }
   }
 
-  rotate_yz({ x, y, z }) {
+  rotate_yz({ x, y, z }, angle) {
     return {
       x: x,
-      y: y * Math.cos(this.angle) - z * Math.sin(this.angle),
-      z: y * Math.sin(this.angle) + z * Math.cos(this.angle)
+      y: y * Math.cos(angle) - z * Math.sin(angle),
+      z: y * Math.sin(angle) + z * Math.cos(angle)
     }
   }
 
   worldTransform(p) {
     if (this.model.name == "Torus") {
       // rotation
-      p = this.rotate_yz(p);
+      p = this.rotate_yz(p, this.angle);
     } else {
-      p = this.rotate_xz(p)
+      p = this.rotate_xz(p, this.angle)
     }
 
     // movement
@@ -289,8 +330,15 @@ class Renderer {
 
     if (!this.camera) return p
 
-    // camera movement
-    return this.translate(p, -this.camera.x, -this.camera.y, -this.camera.z);
+    p = this.translate(p, -this.camera.x, -this.camera.y, -this.camera.z)
+    p = this.rotate_xz(p, -this.camera.yaw)
+    //p = this.rotate_yz(p, -this.camera.pitch)
+
+    // roll/tilt (around Z axis)
+    //p = this.rotate_xy(p, -this.camera.roll)
+
+    return p
+
   }
 
   transform(p) {
@@ -312,7 +360,11 @@ class Renderer {
 
   draw_vertices() {
     for (const v of this.model.vs) {
-      this.point(this.NdcToScreen(this.project(this.transform(v))))
+      const p = this.transform(v)
+
+      if (p.z < 0.1) continue;
+      this.point(this.NdcToScreen(this.project(p)))
+      //this.point(this.NdcToScreen(this.project(this.transform(v))))
     }
   }
 
@@ -322,10 +374,20 @@ class Renderer {
         let p1 = this.model.vs[f[i]]
         let p2 = this.model.vs[f[(i + 1) % f.length]]
 
+        p1 = this.transform(p1)
+        p2 = this.transform(p2)
+
+        if (p1.z < 0.1 || p2.z < 0.1) continue;
+
         this.line(
+          this.NdcToScreen(this.project(p1)),
+          this.NdcToScreen(this.project(p2))
+        );
+
+        /*this.line(
           this.NdcToScreen(this.project(this.transform(p1))),
           this.NdcToScreen(this.project(this.transform(p2)))
-        )
+        )*/
       }
     }
   }

@@ -1,8 +1,9 @@
 1. UI : 
-- need to see when button is toggle off or on
+- need to see when button is toggle off or on 
 
 2. Camera : 
-- need to be able to move in the scene and see shape from anywhere
+- need to be able to move in the scene and see shape from anywhere [/]
+- add to UI reset button to default position & rotation
 
 3. filled face, hidden surface & texture : 
 - need to have a button to activate/desactivate anywhere in this chain : vertices → edges → filled face → hidden surface → texture 
