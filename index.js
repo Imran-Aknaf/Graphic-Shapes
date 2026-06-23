@@ -10,9 +10,6 @@ import { vs_tor, fs_tor } from "./torus.js"
 
 console.log("starting...")
 
-//const BACKGROUND = "black"
-//const FOREGROUND = "green"
-
 const models = [
   { name: "Cube", vs: vs_cu, fs: fs_cu },
   { name: "Pyramid", vs: vs_py, fs: fs_py },
@@ -50,19 +47,20 @@ function updateCamera(camera) {
   const moveSpeed = 0.05
   const rotSpeed = 0.03
 
-  //rotation 
-  if (keys["ArrowLeft"]) camera.rotate(-rotSpeed)
-  if (keys["ArrowRight"]) camera.rotate(rotSpeed)
+  //rotations
+  if (keys["ArrowLeft"]) camera.rotate(rotSpeed, 0)
+  if (keys["ArrowRight"]) camera.rotate(-rotSpeed, 0)
 
+  if (keys["ArrowUp"]) camera.rotate(0, -rotSpeed)
+  if (keys["ArrowDown"]) camera.rotate(0, rotSpeed)
 
 
   //forward & right vector from any angle yaw of camera (we consider yaw = 0 when forward = (0,0,1) & concluded this formula's)
 
-  // (0,0,1) by default as camera.yaw = 0°
   const forward = {
-    x: -Math.sin(camera.yaw),
-    y: 0,
-    z: Math.cos(camera.yaw)
+    x: -Math.sin(camera.yaw) * Math.cos(camera.pitch),
+    y: -Math.sin(camera.pitch),
+    z: Math.cos(camera.yaw) * Math.cos(camera.pitch)
   }
 
   const right = {
@@ -185,10 +183,18 @@ class Camera {
     this.z = 0
 
     this.yaw = 0 //left-right
+    this.pitch = 0 //up-down
   }
 
-  rotate(dYaw) {
+  rotate(dYaw, dPitch) {
     this.yaw += dYaw
+    this.pitch += dPitch
+
+    //can go up/down in range [-range°, +range°]
+    const range = 85
+    const limit = range * Math.PI / 180
+    if (this.pitch > limit) this.pitch = limit
+    if (this.pitch < -limit) this.pitch = -limit
   }
 }
 
@@ -332,7 +338,7 @@ class Renderer {
 
     p = this.translate(p, -this.camera.x, -this.camera.y, -this.camera.z)
     p = this.rotate_xz(p, -this.camera.yaw)
-    //p = this.rotate_yz(p, -this.camera.pitch)
+    p = this.rotate_yz(p, -this.camera.pitch)
 
     // roll/tilt (around Z axis)
     //p = this.rotate_xy(p, -this.camera.roll)
