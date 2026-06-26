@@ -33,6 +33,7 @@ for (let i = 0; i < top_circle.length; i++) {
   const next = (i + 1) % segments
 
 
-  const face = [i, next, next + segments, i + segments]
+  //const face = [i, next, next + segments, i + segments]
+  const face = [i, i + segments, next + segments, next]
   fs_cyl.push(face)
 }

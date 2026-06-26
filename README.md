@@ -526,3 +526,89 @@ Forward / Backward:
 Right / Left:
 pos += right * speed
 pos -= right * speed (opposite direction)
+
+
+# Backface culling
+
+We don't want to see the faces that we are not supposed to see , they are called "back faces".
+So just don't draw them => need to detect which face is currenly considered a "back face".
+
+How to do that ?
+
+1. what are faces : 
+
+- a face is composed of n vertices a,b,c,...
+- and these vertices are in a natural sorted order, for example for a square ABCD : 
+
+- A -> B -> C -> D -> A 
+or
+- A -> D -> C -> B -> A
+
+basically there is 2 possible order : clockwise & counter-clockwise
+
+!["vertices order"](./illustrations/vertices-order.png)
+
+- so 2 possible traversal direction
+
+2. what is a normal ?
+
+- for a plane/face, a normal is a perpendicular vector
+- a plane has infinitely many normals because it can go up & down, and can be positionned anywhere on the plane basically
+- but there are only two unique normal directions: one on each side of the plane.
+
+- what is interesting to us is : does the normal of "back faces" points toward the same direction as the normal of "front faces"
+- if they are different, it would be a great mathematical way to detect back vs front faces
+
+3. normal vector mathematically :
+
+- to build a normal vector, u just need to have 2 vectors lying on the surface of the plane, and then do their cross product
+- because cross product always returns a vector perpendicular to both vectors and thus to the plane
+
+but another important thing about normal vectors is this proprety :
+
+- let 2 vectors AB, AC of a plane
+- normal_1 = AB × AC
+- normal_2 = AC × AB
+- proprety of cross product : A × B = -(B × A), meaning that normal_1 = -normal_2
+- and meaning that normal_1 and normal_2 point toward opposite perpendicular directions
+
+4. vertex order matters : 
+
+- now let's comeback to our faces
+- in a face there is vertices
+
+[need explaination here of basically the algo : when i have a face, what do i do with it that makes me compute a normal that will be opposite for front & back faces]
+[so that then just after i can talk about the proprety above proving that basically through this vertex-order dependent vector choosing, we have opposite normals when needed]
+[do the example on a square & then generalise]
+[really explain how we go from vertices, to selection which one exactly, to computing the need vectors, to computing the normal & show it all works out]
+
+5. what about the camera :
+
+- now we have normals of faces, and we know opposite faces will produce opoosite normals
+- but we need to know basically, does the face is seeen by the camera or not
+
+- to do that , for each face we just take it's center (why it's center and not just a vertex ?), and make a vector from it to the camera
+- so just do , vector = face_center - camera_pos
+
+- now naturally, if the normal of the face is in the same direction as this vector, that means we should draw the face
+- if not in the same direction, we should not draw the face
+(i think this depends, it's not 100% true ? maybe it's actually when they are opposite that we should draw if it's the case that the front faces always do opposite normals compared to vector to camera ?)
+
+How do we do that ?
+- we use the dot product which is + if same direction, - if opposite , 0 if perpendicular
+
+So full pipeline, for every face : 
+
+1. Take 3 vertices : v0, v1, v2
+
+2. Compute : e1 = v1 - v0, e2 = v2 - v0
+
+3. Compute : normal = e1 × e2
+
+4. Compute the center of the face
+
+5. Compute : viewVector = cameraPosition - center
+
+6. Compute dot product : dot = normal · viewVector
+
+7. if dot > 0 (or < 0 depending on convention) : draw the face , else skip it

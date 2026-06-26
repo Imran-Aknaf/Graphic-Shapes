@@ -1,5 +1,5 @@
 1. UI : 
-- need to see when button is toggle off or on 
+- need to see when button is toggle off or on [/]
 
 2. Camera : 
 - need to be able to move in the scene and see shape from anywhere [/]

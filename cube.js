@@ -18,3 +18,18 @@ export const fs_cu = [
   [2, 6],
   [3, 7]
 ]
+
+
+/* export const fs_cu = [
+  [0, 1, 2, 3],
+
+  [4, 5, 6, 7], //[4, 7, 6, 5] askip doit etre ca mais je laisse pour voir le bug
+
+  [1, 5, 6, 2],
+
+  [0, 3, 7, 4],
+
+  [0, 1, 5, 4],
+
+  [3, 2, 6, 7]
+] */
