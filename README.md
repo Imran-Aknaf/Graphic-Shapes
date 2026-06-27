@@ -338,7 +338,7 @@ We already have a sort of simplest possible 3D engine because if you give me a s
 - all it's vertices
 - how should they be connected (so the faces)
 
-Then i can draw those vertices & edges
+Then i can draw those vertices & edges/faces
 And each point can be independenly (all together of course) rotated/translated
 
 ![a cube](./illustrations/cube.png)
@@ -612,3 +612,14 @@ So full pipeline, for every face :
 6. Compute dot product : dot = normal · viewVector
 
 7. if dot > 0 (or < 0 depending on convention) : draw the face , else skip it
+
+
+## Note perso 2 sec 
+
+A front face = a face whose vertices are listed counter-clockwise when looking at the outside of the object.
+
+Fait testé et avérée, si je regarde une face de "devant" et que je vois que [4,7,6,5] donne un order CCW, et que je vais regarder la même face de derrière, [4,7,6,5] sera CW    
+Chez moi : 
+
+- CCW = on est "devant la face", donc on doit la voir
+- CW = la face est caché, on doit pas la voir

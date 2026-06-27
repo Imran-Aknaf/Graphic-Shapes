@@ -10,26 +10,26 @@ export const vs_cu = [
   { x: -0.30, y: 0.30, z: -0.30 },
 ]
 
-export const fs_cu = [
+/* export const fs_cu = [
   [0, 1, 2, 3],
   [4, 5, 6, 7],
   [0, 4],
   [1, 5],
   [2, 6],
   [3, 7]
-]
-
-
-/* export const fs_cu = [
-  [0, 1, 2, 3],
-
-  [4, 5, 6, 7], //[4, 7, 6, 5] askip doit etre ca mais je laisse pour voir le bug
-
-  [1, 5, 6, 2],
-
-  [0, 3, 7, 4],
-
-  [0, 1, 5, 4],
-
-  [3, 2, 6, 7]
 ] */
+
+
+export const fs_cu = [
+  [0, 1, 2, 3], //z face
+
+  [4, 7, 6, 5], //z face
+
+  [1, 5, 6, 2], //y face
+
+  [0, 3, 7, 4], //y face
+
+  [0, 4, 5, 1], //side face
+
+  [3, 2, 6, 7] //side face
+]

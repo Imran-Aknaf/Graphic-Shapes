@@ -242,12 +242,13 @@ class Renderer {
     this.BACKGROUND = "black"
     this.FOREGROUND = "green"
 
-    this.vertexSize = 15
+    this.vertexSize = 25
     this.vertexShape = "circle"
 
     this.showVertices = options.showVertices ?? false //default value
-    this.showEdges = options.showEdges ?? true //default value
+    this.showFaces = options.showFaces ?? true //default value
     this.showColors = options.showColors ?? false //default value
+    this.showBackfaceCulling = options.showBackfaceCulling ?? true; //default value
 
     this.colors = this.initColors()
 
@@ -275,12 +276,16 @@ class Renderer {
     this.showVertices = !this.showVertices
   }
 
-  toggleEdges() {
-    this.showEdges = !this.showEdges
+  toggleFaces() {
+    this.showFaces = !this.showFaces
   }
 
   toggleColors() {
     this.showColors = !this.showColors
+  }
+
+  toggleBackfaceCulling() {
+    this.showBackfaceCulling = !this.showBackfaceCulling;
   }
 
   clear() {
@@ -301,9 +306,10 @@ class Renderer {
   }
 
 
-  point({ x, y }) {
+  point({ x, y }, index) {
     //const size = 15
     this.ctx.fillStyle = this.FOREGROUND
+
     if (this.vertexShape == "square") {
       this.ctx.fillRect(x - this.vertexSize / 2, y - this.vertexSize / 2, this.vertexSize, this.vertexSize)
     }
@@ -312,8 +318,61 @@ class Renderer {
       this.ctx.arc(x, y, this.vertexSize / 2, 0, 2 * Math.PI)
       this.ctx.fill()
     }
+
+    if (!this.showFaces) {
+      this.ctx.fillStyle = "white";
+      this.ctx.font = "bold 12px Arial";
+      this.ctx.textAlign = "center";
+      this.ctx.textBaseline = "middle";
+      this.ctx.fillText(index, x, y);
+    }
   }
 
+  subtract(a, b) {
+    return {
+      x: a.x - b.x,
+      y: a.y - b.y,
+      z: a.z - b.z
+    }
+  }
+
+  add(a, b) {
+    return {
+      x: a.x + b.x,
+      y: a.y + b.y,
+      z: a.z + b.z
+    }
+  }
+
+  multiply(v, s) {
+    /*
+    returns scalar * vector 
+    */
+    return {
+      x: v.x * s,
+      y: v.y * s,
+      z: v.z * s
+    }
+  }
+
+  dotProduct(a, b) {
+    /*
+    dot = 0 : vectors are orthogonal (90° angle)
+    dot > 0 : vectors point in a similar direction (angle < 90°)
+    dot < 0 : vectors point in opposite directions (angle > 90°)
+
+    returns a scalar 
+    */
+    return a.x * b.x + a.y * b.y + a.z * b.z
+  }
+
+  crossProduct(a, b) {
+    return {
+      x: a.y * b.z - a.z * b.y,
+      y: a.z * b.x - a.x * b.z,
+      z: a.x * b.y - a.y * b.x
+    }
+  }
 
   NdcToScreen({ x, y }) {
     //[-1,1] --> [0,2] --> [0,1] --> [0,w] : x' = (x+1)/2 * w
@@ -367,9 +426,9 @@ class Renderer {
   worldTransform(p) {
     if (this.model.name == "Torus") {
       // rotation
-      p = this.rotate_yz(p, this.angle);
+      //p = this.rotate_yz(p, this.angle);
     } else {
-      p = this.rotate_xz(p, this.angle)
+      //p = this.rotate_xz(p, this.angle)
     }
 
     // movement
@@ -400,6 +459,109 @@ class Renderer {
     return p
   }
 
+
+  isFrontFace(face) {
+    /** 
+     * Implements backface culling by detecting face orientation based on their normal vector direction compared to face-camera vector direction
+     * Depends totally on a consistent winding order of face vertices
+     * 
+     * In our case : 
+     * - CCW = face is seen by camera
+     * - CW = face is not seen by camera
+     * 
+     * Also after test & trial, in our situation, normal will be oriented opposite to face->camera, when face need to be shown :
+     * - So we use dot < 0 as a check
+     * 
+     * Assumes camera is at (0,0,0) at all point wich should be the case as we only move the objects, not the camera
+    */
+
+    //for now backface culling is only verified for cube , so i'll only test it on this
+
+    //for testing 
+    /*if (this.model.name != "Cube") {
+      return true
+    }*/
+
+    //takes 3 points that define the plane
+    const v0 = this.transform(this.model.vs[face[0]]);
+    const v1 = this.transform(this.model.vs[face[1]]);
+    const v2 = this.transform(this.model.vs[face[2]]);
+
+    //takes the vectors lying on the surface on this plane
+    const e1 = this.subtract(v1, v0);
+    const e2 = this.subtract(v2, v0);
+
+    //takes the perpendicular vector of this plane = where the face "looks" at
+    const normal = this.crossProduct(e1, e2);
+
+
+    //computes face center
+    let center = { x: 0, y: 0, z: 0 };
+
+    for (const index of face)
+      center = this.add(center, this.transform(this.model.vs[index]));
+
+    center = this.multiply(center, 1 / face.length);
+
+    //camera is at origin, so this compute [face -> camera] vector : A -> B = B-A
+    const view = {
+      x: -center.x,
+      y: -center.y,
+      z: -center.z
+    };
+
+    return this.dotProduct(normal, view) < 0
+  }
+
+  draw_vertices() {
+    for (let i = 0; i < this.model.vs.length; i++) {
+      const p = this.transform(this.model.vs[i])
+
+      if (p.z < 0.1) continue;
+
+      this.point(this.NdcToScreen(this.project(p)), i)
+    }
+  }
+
+  draw_faces() {
+    for (let j = 0; j < this.model.fs.length; j++) {
+      const face = this.model.fs[j]
+
+      if (this.showBackfaceCulling && !this.isFrontFace(face)) continue //skip hidden faces
+
+      const color = this.showColors ? this.colors[j] : this.FOREGROUND
+
+      for (let i = 0; i < face.length; i++) {
+        let p1 = this.model.vs[face[i]]
+        let p2 = this.model.vs[face[(i + 1) % face.length]]
+
+        p1 = this.transform(p1)
+        p2 = this.transform(p2)
+
+        //don't draw line if too close from camera
+        if (p1.z < 0.1 || p2.z < 0.1) continue
+
+        this.line(
+          this.NdcToScreen(this.project(p1)),
+          this.NdcToScreen(this.project(p2)),
+          color
+        )
+      }
+    }
+  }
+
+  draw() {
+    this.clear()
+
+    if (this.showVertices) {
+      this.draw_vertices()
+    }
+
+    if (this.showFaces) {
+      this.draw_faces()
+    }
+  }
+
   update() {
     this.angle += 2 * Math.PI * this.dt * this.rotations_per_second;
 
@@ -407,54 +569,6 @@ class Renderer {
 
     if (this.camera) {
       updateCamera(this.camera)
-    }
-  }
-
-  draw_vertices() {
-    for (const v of this.model.vs) {
-      const p = this.transform(v)
-
-      //don't draw thing if too close to camera
-      if (p.z < 0.1) continue;
-
-      this.point(this.NdcToScreen(this.project(p)))
-    }
-  }
-
-  draw_edges() {
-    //for (const f of this.model.fs) {
-    for (let j = 0; j < this.model.fs.length; j++) {
-      const f = this.model.fs[j]
-      for (let i = 0; i < f.length; i++) {
-        let p1 = this.model.vs[f[i]]
-        let p2 = this.model.vs[f[(i + 1) % f.length]]
-
-        p1 = this.transform(p1)
-        p2 = this.transform(p2)
-
-        //don't draw line if too close from camera
-        if (p1.z < 0.1 || p2.z < 0.1) continue;
-
-        const color = this.showColors ? this.colors[j] : this.FOREGROUND;
-
-        this.line(
-          this.NdcToScreen(this.project(p1)),
-          this.NdcToScreen(this.project(p2)),
-          color
-        );
-
-      }
-    }
-  }
-
-
-  draw() {
-    this.clear()
-    if (this.showVertices) {
-      this.draw_vertices()
-    }
-    if (this.showEdges) {
-      this.draw_edges()
     }
   }
 
@@ -481,23 +595,23 @@ class Renderer {
 
 
 for (let { previewCanvas, title, box, model } of previews) {
-  const r = new Renderer(previewCanvas, model, { showEdges: true })
+  const r = new Renderer(previewCanvas, model, { showVertices: false, showFaces: true, showColors: false, showBackfaceCulling: false })
   r.start()
 }
 
 
 const camera = new Camera();
-const mainRenderer = new Renderer(canvas, currentModel, { camera: camera, showEdges: true, showColors: true })
+const mainRenderer = new Renderer(canvas, currentModel, { camera: camera, showVertices: false, showFaces: true, showColors: false, showBackfaceCulling: true })
 mainRenderer.start()
 
 
 
 const vertexBtn = document.getElementById("vertex-button");
-const edgeBtn = document.getElementById("edge-button");
+const faceBtn = document.getElementById("face-button");
 const colorBtn = document.getElementById("color-button");
 
 vertexBtn.classList.toggle("active", mainRenderer.showVertices);
-edgeBtn.classList.toggle("active", mainRenderer.showEdges);
+faceBtn.classList.toggle("active", mainRenderer.showFaces);
 colorBtn.classList.toggle("active", mainRenderer.showColors);
 
 vertexBtn.addEventListener("click", () => {
@@ -505,9 +619,9 @@ vertexBtn.addEventListener("click", () => {
   vertexBtn.classList.toggle("active", mainRenderer.showVertices);
 });
 
-edgeBtn.addEventListener("click", () => {
-  mainRenderer.toggleEdges();
-  edgeBtn.classList.toggle("active", mainRenderer.showEdges);
+faceBtn.addEventListener("click", () => {
+  mainRenderer.toggleFaces();
+  faceBtn.classList.toggle("active", mainRenderer.showFaces);
 });
 
 colorBtn.addEventListener("click", () => {

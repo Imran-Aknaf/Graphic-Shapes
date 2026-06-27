@@ -7,7 +7,7 @@ export const vs_py = [
 ]
 
 export const fs_py = [
-  [0, 1, 2, 3], // base
+  [0, 3, 2, 1], // base
 
   [0, 1, 4],
   [1, 2, 4],
