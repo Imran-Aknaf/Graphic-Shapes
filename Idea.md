@@ -17,3 +17,10 @@ For a futur version , the project should be extended on shape manipulation :
 - move object with mouse
 - rotate object with mouse
 - ..
+
+Other ideas : 
+- 2 possible (toggle) menu selection : either the current, or one with only 1 previewCanvas that is way bigger, and left/right arrows 
+
+- i want a button to not go towards shape but towards galaxy generation. Inspiration : https://vercidium.com/blog/random-galaxy-generation-with-c-and-opengl/
+
+

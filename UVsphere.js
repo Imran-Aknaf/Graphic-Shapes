@@ -61,7 +61,8 @@ for (let i = 0; i < stacks; i++) {
     const p3 = (i + 1) * slices + ((j + 1) % slices)
     const p4 = (i + 1) * slices + j
 
-    const face = [p1, p2, p3, p4]
+    //const face = [p1, p2, p3, p4]
+    const face = [p1, p4, p3, p2]
 
     fs_uv.push(face)
   }

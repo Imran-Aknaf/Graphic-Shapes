@@ -614,12 +614,34 @@ So full pipeline, for every face :
 7. if dot > 0 (or < 0 depending on convention) : draw the face , else skip it
 
 
-## Note perso 2 sec 
+## Winding order
 
-A front face = a face whose vertices are listed counter-clockwise when looking at the outside of the object.
+Backface culling only work if there is a consisten winding order. Meaning face index vertices are always in an order that is consistent. 
+In our case we consider that a face that we look from outside should have an order f = [i,j,k,l] such that i->j->k->l is counter clock wise (CCW)
 
-Fait testé et avérée, si je regarde une face de "devant" et que je vois que [4,7,6,5] donne un order CCW, et que je vais regarder la même face de derrière, [4,7,6,5] sera CW    
-Chez moi : 
+Formally : 
+- front face = a face whose vertices are listed counter-clockwise when looking at the outside of the object.
 
-- CCW = on est "devant la face", donc on doit la voir
-- CW = la face est caché, on doit pas la voir
+Note that having this consistent format for all faces make sense as when u have 2 opposite faces (one in front, one behind), u naturally want to only see the front face
+And naturally what will happen is that : 
+- front face order is visually indeed in CCW order
+- but back face is 'mirrored' and thus in CW from camera point of view
+
+But i still didn't understand how this actually links to the math, probably has to do on when we compute the 2 vectors e1,e2 that define the plane & the normal. This must be dependent on the winding order , justifying the need for this consistency. 
+
+# Backface culling is not enough : Depth Sorting (Painter's Algorithm)
+
+It worked for all faces, but when i looked at torus, i see this : 
+
+!["torus back-face culling"](./illustrations/torus-backface-culling.png)
+
+this just shows the limitation of backface culling for more complex object as indeed it is rendering front faces from camera point of view, but physically we should not see those front faces that are behind the first front faces. 
+
+So the solution is depth sorting :
+- Draw distant faces first, then nearer faces on top => Near things cover far things.
+
+[TODO]
+
+Also there is Z-buffer but idk it yet (important)
+
+[TODO]

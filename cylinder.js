@@ -29,6 +29,9 @@ export const vs_cyl = top_circle.concat(bottom_circle)
 
 export const fs_cyl = []
 
+
+const top_face = []
+const bottom_face = []
 for (let i = 0; i < top_circle.length; i++) {
   const next = (i + 1) % segments
 
@@ -36,4 +39,11 @@ for (let i = 0; i < top_circle.length; i++) {
   //const face = [i, next, next + segments, i + segments]
   const face = [i, i + segments, next + segments, next]
   fs_cyl.push(face)
+
+  top_face.push(i)
+  bottom_face.push(i + segments)
 }
+bottom_face.reverse()
+
+fs_cyl.push(top_face)
+fs_cyl.push(bottom_face)

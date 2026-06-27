@@ -50,6 +50,6 @@ for (let i = 0; i < rings; i++) {
     const p3 = nextRing * sides + nextSide
     const p4 = nextRing * sides + j
 
-    fs_tor.push([p1, p2, p3, p4])
+    fs_tor.push([p1, p4, p3, p2])
   }
 }

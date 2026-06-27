@@ -8,19 +8,27 @@ import { vs_uv, fs_uv } from "./UVsphere.js"
 import { vs_ico, fs_ico } from "./icosahedron.js"
 import { vs_tor, fs_tor } from "./torus.js"
 
+import { fixWindingOrder } from "./preprocessing.js"
+
 console.log("starting...")
 
 const models = [
-  { name: "Cube", vs: vs_cu, fs: fs_cu },
-  { name: "Pyramid", vs: vs_py, fs: fs_py },
-  { name: "Octahedron", vs: vs_octa, fs: fs_octa },
-  { name: "Cylinder", vs: vs_cyl, fs: fs_cyl },
-  { name: "Cone", vs: vs_con, fs: fs_con },
-  { name: "Icosahedron", vs: vs_ico, fs: fs_ico },
-  { name: "UV Sphere", vs: vs_uv, fs: fs_uv },
-  { name: "Torus", vs: vs_tor, fs: fs_tor },
-  { name: "Penguin", vs: vs_pen, fs: fs_pen }
+  { name: "Cube", vs: vs_cu, fs: fs_cu, convex: true },
+  { name: "Pyramid", vs: vs_py, fs: fs_py, convex: true },
+  { name: "Octahedron", vs: vs_octa, fs: fs_octa, convex: true },
+  { name: "Cylinder", vs: vs_cyl, fs: fs_cyl, convex: true },
+  { name: "Cone", vs: vs_con, fs: fs_con, convex: true },
+  { name: "Icosahedron", vs: vs_ico, fs: fs_ico, convex: true },
+  { name: "UV Sphere", vs: vs_uv, fs: fs_uv, convex: false },
+  { name: "Torus", vs: vs_tor, fs: fs_tor, convex: false },
+  { name: "Penguin", vs: vs_pen, fs: fs_pen, convex: false }
 ]
+
+for (const model of models) {
+  if (model.convex) {
+    fixWindingOrder(model);
+  }
+}
 
 const distinctColors = [
   '#e6194B', '#3cb44b', '#ffe119', '#4363d8', '#f58231', '#911eb4',
@@ -319,13 +327,13 @@ class Renderer {
       this.ctx.fill()
     }
 
-    if (!this.showFaces) {
-      this.ctx.fillStyle = "white";
-      this.ctx.font = "bold 12px Arial";
-      this.ctx.textAlign = "center";
-      this.ctx.textBaseline = "middle";
-      this.ctx.fillText(index, x, y);
-    }
+    //if (!this.showFaces) {
+    this.ctx.fillStyle = "white";
+    this.ctx.font = "bold 12px Arial";
+    this.ctx.textAlign = "center";
+    this.ctx.textBaseline = "middle";
+    this.ctx.fillText(index, x, y);
+    //}
   }
 
   subtract(a, b) {
@@ -475,40 +483,34 @@ class Renderer {
      * Assumes camera is at (0,0,0) at all point wich should be the case as we only move the objects, not the camera
     */
 
-    //for now backface culling is only verified for cube , so i'll only test it on this
-
-    //for testing 
-    /*if (this.model.name != "Cube") {
-      return true
-    }*/
 
     //takes 3 points that define the plane
-    const v0 = this.transform(this.model.vs[face[0]]);
-    const v1 = this.transform(this.model.vs[face[1]]);
-    const v2 = this.transform(this.model.vs[face[2]]);
+    const v0 = this.transform(this.model.vs[face[0]])
+    const v1 = this.transform(this.model.vs[face[1]])
+    const v2 = this.transform(this.model.vs[face[2]])
 
     //takes the vectors lying on the surface on this plane
-    const e1 = this.subtract(v1, v0);
-    const e2 = this.subtract(v2, v0);
+    const e1 = this.subtract(v1, v0)
+    const e2 = this.subtract(v2, v0)
 
     //takes the perpendicular vector of this plane = where the face "looks" at
-    const normal = this.crossProduct(e1, e2);
+    const normal = this.crossProduct(e1, e2)
 
 
     //computes face center
-    let center = { x: 0, y: 0, z: 0 };
+    let center = { x: 0, y: 0, z: 0 }
 
     for (const index of face)
-      center = this.add(center, this.transform(this.model.vs[index]));
+      center = this.add(center, this.transform(this.model.vs[index]))
 
-    center = this.multiply(center, 1 / face.length);
+    center = this.multiply(center, 1 / face.length)
 
     //camera is at origin, so this compute [face -> camera] vector : A -> B = B-A
     const view = {
       x: -center.x,
       y: -center.y,
       z: -center.z
-    };
+    }
 
     return this.dotProduct(normal, view) < 0
   }

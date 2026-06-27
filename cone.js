@@ -37,9 +37,13 @@ for (let i = 1; i < vs_con.length; i++) {
   fs_con.push(face)
 }
 
-//need to also joint the base vertices , to get the base face too (not just the side faces)
+//need to also joint the base vertices , to get the base face too (not just the side faces) 
+//also this is the right winding order for backface culling
+
 const base_face = []
-for (let i = 1; i < vs_con.length; i++) {
+
+for (let i = vs_con.length - 1; i > 0; i--) {
   base_face.push(i)
 }
+
 fs_con.push(base_face)
