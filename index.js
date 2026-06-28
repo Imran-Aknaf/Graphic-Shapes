@@ -133,6 +133,11 @@ backbutton.addEventListener("click", () => {
   cameraUI.style.display = "none"
 
   mainRenderer.stop()
+
+  for (r of previewRenderers) {
+    r.start()
+  }
+
 })
 
 
@@ -161,6 +166,10 @@ for (const model of models) {
     cameraUI.style.display = "flex"
 
     mainRenderer.start()
+
+    for (r of previewRenderers) {
+      r.stop()
+    }
   })
 
   box.appendChild(title)
@@ -257,6 +266,8 @@ class Renderer {
     this.showFaces = options.showFaces ?? true //default value
     this.showColors = options.showColors ?? false //default value
     this.showBackfaceCulling = options.showBackfaceCulling ?? true; //default value
+    this.fillFace = options.fillFace ?? false;
+
 
     this.colors = this.initColors()
 
@@ -313,6 +324,25 @@ class Renderer {
     this.ctx.stroke()
   }
 
+  polygon(points, fillColor, strokeColor) {
+
+    this.ctx.beginPath()
+    this.ctx.moveTo(points[0].x, points[0].y)
+
+    for (let i = 1; i < points.length; i++) {
+      this.ctx.lineTo(points[i].x, points[i].y)
+    }
+    this.ctx.closePath()
+
+    if (this.fillFace) {
+      this.ctx.fillStyle = fillColor;
+      this.ctx.fill();
+    }
+
+    this.ctx.lineWidth = 2
+    this.ctx.strokeStyle = strokeColor
+    this.ctx.stroke()
+  }
 
   point({ x, y }, index) {
     //const size = 15
@@ -531,26 +561,55 @@ class Renderer {
 
       if (this.showBackfaceCulling && !this.isFrontFace(face)) continue //skip hidden faces
 
-      const color = this.showColors ? this.colors[j] : this.FOREGROUND
+      const faceColor = this.showColors ? this.colors[j] : this.FOREGROUND
 
-      for (let i = 0; i < face.length; i++) {
-        let p1 = this.model.vs[face[i]]
-        let p2 = this.model.vs[face[(i + 1) % face.length]]
+      /* const screenPoints = []
 
-        p1 = this.transform(p1)
-        p2 = this.transform(p2)
+      for (const index of face) {
+        const p = this.transform(this.model.vs[index])
 
-        //don't draw line if too close from camera
-        if (p1.z < 0.1 || p2.z < 0.1) continue
+        if (p.z < 0.1) continue;
 
-        this.line(
-          this.NdcToScreen(this.project(p1)),
-          this.NdcToScreen(this.project(p2)),
-          color
-        )
+        screenPoints.push(this.NdcToScreen(this.project(p)))
       }
+
+      this.polygon(screenPoints, color, "white") */
+
+      const transformed = face.map(index =>
+        this.transform(this.model.vs[index])
+      )
+
+      if (transformed.some(p => p.z < 0.1))
+        continue
+
+      const screenPoints = transformed.map(p =>
+        this.NdcToScreen(this.project(p))
+      )
+
+      this.polygon(screenPoints, faceColor, "white")
+
+
+
+
+      /*  for (let i = 0; i < face.length; i++) {
+         let p1 = this.model.vs[face[i]]
+         let p2 = this.model.vs[face[(i + 1) % face.length]]
+ 
+         p1 = this.transform(p1)
+         p2 = this.transform(p2)
+ 
+         //don't draw line if too close from camera
+         if (p1.z < 0.1 || p2.z < 0.1) continue
+ 
+         this.line(
+           this.NdcToScreen(this.project(p1)),
+           this.NdcToScreen(this.project(p2)),
+           color
+         )
+       } */
     }
   }
+
 
   draw() {
     this.clear()
@@ -580,6 +639,7 @@ class Renderer {
     this.draw()
 
     setTimeout(() => this.frame(), this.frameDuration)
+    //askip utiliser requestAnimationFrame(() => this.frame()), a voir
   }
 
   start() {
@@ -595,16 +655,18 @@ class Renderer {
 }
 
 
+const previewRenderers = []
 
 for (let { previewCanvas, title, box, model } of previews) {
   const r = new Renderer(previewCanvas, model, { showVertices: false, showFaces: true, showColors: false, showBackfaceCulling: false })
   r.start()
+
+  previewRenderers.push(r)
 }
 
 
 const camera = new Camera();
-const mainRenderer = new Renderer(canvas, currentModel, { camera: camera, showVertices: false, showFaces: true, showColors: false, showBackfaceCulling: true })
-mainRenderer.start()
+const mainRenderer = new Renderer(canvas, currentModel, { camera: camera, showVertices: false, showFaces: true, showColors: false, showBackfaceCulling: true, fillFace: true })
 
 
 
