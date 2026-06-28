@@ -69,7 +69,9 @@ function updateCamera(camera) {
   if (keys["ArrowDown"]) camera.rotate(0, rotSpeed)
 
 
-  //forward & right vector from any angle yaw of camera (we consider yaw = 0 when forward = (0,0,1) & concluded this formula's)
+  /**
+   * forward & right vector from any angle yaw of camera (we consider yaw = 0 when forward = (0,0,1) & concluded this formula's)
+  */
 
   const forward = {
     x: -Math.sin(camera.yaw) * Math.cos(camera.pitch),
@@ -92,7 +94,7 @@ function updateCamera(camera) {
 
   if (keys["s"]) {
     camera.x -= forward.x * moveSpeed
-    camera.y -= forward.y * moveSpeed // Descend si on regarde en haut
+    camera.y -= forward.y * moveSpeed
     camera.z -= forward.z * moveSpeed
   }
 
@@ -134,7 +136,7 @@ backbutton.addEventListener("click", () => {
 
   mainRenderer.stop()
 
-  for (r of previewRenderers) {
+  for (const r of previewRenderers) {
     r.start()
   }
 
@@ -167,7 +169,7 @@ for (const model of models) {
 
     mainRenderer.start()
 
-    for (r of previewRenderers) {
+    for (const r of previewRenderers) {
       r.stop()
     }
   })
@@ -258,19 +260,30 @@ class Renderer {
 
     this.BACKGROUND = "black"
     this.FOREGROUND = "green"
+    this.WHITE = "white"
+    this.PURPLE = "#22132D"
 
-    this.vertexSize = 25
+    this.vertexSize = 15
     this.vertexShape = "circle"
 
-    this.showVertices = options.showVertices ?? false //default value
-    this.showFaces = options.showFaces ?? true //default value
-    this.showColors = options.showColors ?? false //default value
-    this.showBackfaceCulling = options.showBackfaceCulling ?? true; //default value
-    this.fillFace = options.fillFace ?? false;
+    this.options = {
+      rotate: options.rotate ?? false,
 
+      showVertices: options.showVertices ?? false,
+      showEdges: options.showEdges ?? false,
+      showFaces: options.showFaces ?? true,
+      showColors: options.showColors ?? false,
+      showBackfaceCulling: options.showBackfaceCulling ?? true,
+
+      faceStyle: {
+        fill: options.faceStyle?.fill ?? this.PURPLE,
+        stroke: options.faceStyle?.stroke ?? this.FOREGROUND
+      },
+
+      vertexColor: options.vertexColor ?? this.FOREGROUND
+    }
 
     this.colors = this.initColors()
-
 
     this.running = false;
   }
@@ -292,31 +305,34 @@ class Renderer {
   }
 
   toggleVertices() {
-    this.showVertices = !this.showVertices
+    this.options.showVertices = !this.options.showVertices
+  }
+
+  toggleEdges() {
+    this.options.showEdges = !this.options.showEdges
   }
 
   toggleFaces() {
-    this.showFaces = !this.showFaces
+    this.options.showFaces = !this.options.showFaces
   }
 
   toggleColors() {
-    this.showColors = !this.showColors
+    this.options.showColors = !this.options.showColors
   }
 
   toggleBackfaceCulling() {
-    this.showBackfaceCulling = !this.showBackfaceCulling;
+    this.options.showBackfaceCulling = !this.options.showBackfaceCulling;
   }
 
   clear() {
-    this.ctx.fillStyle = "black";
+    this.ctx.fillStyle = this.BACKGROUND;
     this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
   }
 
 
-  line(p1, p2, color) {
-    this.ctx.lineWidth = 3
-    //this.ctx.strokeStyle = this.FOREGROUND
-    this.ctx.strokeStyle = color
+  line(p1, p2, edgeColor) {
+    this.ctx.lineWidth = 2
+    this.ctx.strokeStyle = edgeColor
 
     this.ctx.beginPath()
     this.ctx.moveTo(p1.x, p1.y)
@@ -324,8 +340,7 @@ class Renderer {
     this.ctx.stroke()
   }
 
-  polygon(points, fillColor, strokeColor) {
-
+  polygon(points, faceColor) {
     this.ctx.beginPath()
     this.ctx.moveTo(points[0].x, points[0].y)
 
@@ -334,19 +349,12 @@ class Renderer {
     }
     this.ctx.closePath()
 
-    if (this.fillFace) {
-      this.ctx.fillStyle = fillColor;
-      this.ctx.fill();
-    }
-
-    this.ctx.lineWidth = 2
-    this.ctx.strokeStyle = strokeColor
-    this.ctx.stroke()
+    this.ctx.fillStyle = faceColor
+    this.ctx.fill();
   }
 
   point({ x, y }, index) {
-    //const size = 15
-    this.ctx.fillStyle = this.FOREGROUND
+    this.ctx.fillStyle = this.options.vertexColor
 
     if (this.vertexShape == "square") {
       this.ctx.fillRect(x - this.vertexSize / 2, y - this.vertexSize / 2, this.vertexSize, this.vertexSize)
@@ -357,13 +365,12 @@ class Renderer {
       this.ctx.fill()
     }
 
-    //if (!this.showFaces) {
-    this.ctx.fillStyle = "white";
+    //numerate them
+    this.ctx.fillStyle = this.WHITE;
     this.ctx.font = "bold 12px Arial";
     this.ctx.textAlign = "center";
     this.ctx.textBaseline = "middle";
     this.ctx.fillText(index, x, y);
-    //}
   }
 
   subtract(a, b) {
@@ -462,14 +469,14 @@ class Renderer {
   }
 
   worldTransform(p) {
-    if (this.model.name == "Torus") {
-      // rotation
-      //p = this.rotate_yz(p, this.angle);
-    } else {
-      //p = this.rotate_xz(p, this.angle)
+    if (this.options.rotate) {
+      if (this.model.name == "Torus") {
+        p = this.rotate_yz(p, this.angle);
+      } else {
+        p = this.rotate_xz(p, this.angle)
+      }
     }
 
-    // movement
     p = this.translate(p, this.dx, this.dy, this.dz);
 
     return p
@@ -483,11 +490,7 @@ class Renderer {
     p = this.rotate_xz(p, -this.camera.yaw)
     p = this.rotate_yz(p, -this.camera.pitch)
 
-    // roll/tilt (around Z axis)
-    //p = this.rotate_xy(p, -this.camera.roll)
-
     return p
-
   }
 
   transform(p) {
@@ -559,54 +562,46 @@ class Renderer {
     for (let j = 0; j < this.model.fs.length; j++) {
       const face = this.model.fs[j]
 
-      if (this.showBackfaceCulling && !this.isFrontFace(face)) continue //skip hidden faces
+      if (this.options.showBackfaceCulling && !this.isFrontFace(face)) continue //skip hidden faces
 
-      const faceColor = this.showColors ? this.colors[j] : this.FOREGROUND
 
-      /* const screenPoints = []
+      const faceColor = this.options.showColors ? this.colors[j] : this.options.faceStyle.fill
+      const edgeColor = this.options.faceStyle.stroke
 
-      for (const index of face) {
-        const p = this.transform(this.model.vs[index])
+      const screenPoints = []
+      let validFace = true
 
-        if (p.z < 0.1) continue;
+      for (let i = 0; i < face.length; i++) {
+        let p1 = this.model.vs[face[i]]
+        let p2 = this.model.vs[face[(i + 1) % face.length]]
 
-        screenPoints.push(this.NdcToScreen(this.project(p)))
+        p1 = this.transform(p1)
+        p2 = this.transform(p2)
+
+        //don't draw line if too close from camera
+        if (p1.z < 0.1 || p2.z < 0.1) {
+          validFace = false
+          continue
+        }
+
+        p1 = this.NdcToScreen(this.project(p1))
+        p2 = this.NdcToScreen(this.project(p2))
+
+        screenPoints.push(p1) //will be linked with p2 (through i+1) only if both are valid
       }
 
-      this.polygon(screenPoints, color, "white") */
+      if (this.options.showFaces && validFace) {
+        this.polygon(screenPoints, faceColor)
+      }
 
-      const transformed = face.map(index =>
-        this.transform(this.model.vs[index])
-      )
+      if (this.options.showEdges && validFace) {
+        for (let i = 0; i < screenPoints.length; i++) {
+          const p1 = screenPoints[i]
+          const p2 = screenPoints[(i + 1) % screenPoints.length]
 
-      if (transformed.some(p => p.z < 0.1))
-        continue
-
-      const screenPoints = transformed.map(p =>
-        this.NdcToScreen(this.project(p))
-      )
-
-      this.polygon(screenPoints, faceColor, "white")
-
-
-
-
-      /*  for (let i = 0; i < face.length; i++) {
-         let p1 = this.model.vs[face[i]]
-         let p2 = this.model.vs[face[(i + 1) % face.length]]
- 
-         p1 = this.transform(p1)
-         p2 = this.transform(p2)
- 
-         //don't draw line if too close from camera
-         if (p1.z < 0.1 || p2.z < 0.1) continue
- 
-         this.line(
-           this.NdcToScreen(this.project(p1)),
-           this.NdcToScreen(this.project(p2)),
-           color
-         )
-       } */
+          this.line(p1, p2, edgeColor)
+        }
+      }
     }
   }
 
@@ -614,11 +609,11 @@ class Renderer {
   draw() {
     this.clear()
 
-    if (this.showVertices) {
+    if (this.options.showVertices) {
       this.draw_vertices()
     }
 
-    if (this.showFaces) {
+    if (this.options.showEdges || this.options.showFaces) {
       this.draw_faces()
     }
   }
@@ -658,39 +653,70 @@ class Renderer {
 const previewRenderers = []
 
 for (let { previewCanvas, title, box, model } of previews) {
-  const r = new Renderer(previewCanvas, model, { showVertices: false, showFaces: true, showColors: false, showBackfaceCulling: false })
+  const r = new Renderer(previewCanvas, model, {
+    rotate: true,
+    showVertices: false,
+    showEdges: true,
+    showFaces: false,
+    showColors: false,
+    showBackfaceCulling: false,
+  })
+
   r.start()
 
   previewRenderers.push(r)
 }
 
-
 const camera = new Camera();
-const mainRenderer = new Renderer(canvas, currentModel, { camera: camera, showVertices: false, showFaces: true, showColors: false, showBackfaceCulling: true, fillFace: true })
+const mainRenderer = new Renderer(canvas, currentModel, {
+  camera: camera,
+  rotate: false,
+  showVertices: false,
+  showEdges: true,
+  showFaces: true,
+  showColors: false,
+  showBackfaceCulling: true,
+})
 
 
 
 const vertexBtn = document.getElementById("vertex-button");
+const edgeBtn = document.getElementById("edge-button");
 const faceBtn = document.getElementById("face-button");
+const cullingBtn = document.getElementById("culling-button");
 const colorBtn = document.getElementById("color-button");
 
-vertexBtn.classList.toggle("active", mainRenderer.showVertices);
-faceBtn.classList.toggle("active", mainRenderer.showFaces);
-colorBtn.classList.toggle("active", mainRenderer.showColors);
+//initialise button styles to the current initial state
+vertexBtn.classList.toggle("active", mainRenderer.options.showVertices);
+edgeBtn.classList.toggle("active", mainRenderer.options.showEdges);
+faceBtn.classList.toggle("active", mainRenderer.options.showFaces);
+cullingBtn.classList.toggle("active", mainRenderer.options.showBackfaceCulling);
+colorBtn.classList.toggle("active", mainRenderer.options.showColors);
 
 vertexBtn.addEventListener("click", () => {
   mainRenderer.toggleVertices();
-  vertexBtn.classList.toggle("active", mainRenderer.showVertices);
+  vertexBtn.classList.toggle("active", mainRenderer.options.showVertices);
+});
+
+edgeBtn.addEventListener("click", () => {
+  mainRenderer.toggleEdges();
+  edgeBtn.classList.toggle("active", mainRenderer.options.showEdges);
 });
 
 faceBtn.addEventListener("click", () => {
   mainRenderer.toggleFaces();
-  faceBtn.classList.toggle("active", mainRenderer.showFaces);
+  faceBtn.classList.toggle("active", mainRenderer.options.showFaces);
 });
+
+cullingBtn.addEventListener("click", () => {
+  mainRenderer.toggleBackfaceCulling();
+  cullingBtn.classList.toggle("active", mainRenderer.options.showBackfaceCulling);
+});
+
 
 colorBtn.addEventListener("click", () => {
   mainRenderer.toggleColors();
-  colorBtn.classList.toggle("active", mainRenderer.showColors);
+  colorBtn.classList.toggle("active", mainRenderer.options.showColors);
 });
 
 document.getElementById("reset-button").addEventListener("click", () => {
