@@ -631,17 +631,33 @@ But i still didn't understand how this actually links to the math, probably has 
 
 # Backface culling is not enough : Depth Sorting (Painter's Algorithm)
 
-It worked for all faces, but when i looked at torus, i see this : 
+So backface culling solve only a part of visibility problem. Indeed it solves : only render "front faces" and not "back faces"
 
+But in a torus for example, because it's a complete 360° ring, if u look at it from in front, with backface culling on, you will see the front faces of both the front and back of ring : 
 !["torus back-face culling"](./illustrations/torus-backface-culling.png)
 
 this just shows the limitation of backface culling for more complex object as indeed it is rendering front faces from camera point of view, but physically we should not see those front faces that are behind the first front faces. 
 
 So the solution is depth sorting :
 - Draw distant faces first, then nearer faces on top => Near things cover far things.
+- this of course does not work in wireframe, it only works if face are filled as the "filling" will cover what should not be seen.
 
-[TODO]
+So the goal is : back faces should be hidden by the front faces.
 
-Also there is Z-buffer but idk it yet (important)
+What we do currently : 
+- we draw faces in the order they appear in the model file
+- but this order is not dependent on depth
 
-[TODO]
+Solution : 
+1. for a given face, transform all its vertices to see where they end up
+2. then compute a sort of representative depth of them and thus a depth of the face
+3. when all faces are processed, just sort them from farthest to nearest
+4. Draw them in that order
+
+![Torus filled](torus-filled.png)
+![Penguin filled](penguin-filled.png)
+
+## A next step after that for more complex situation
+
+It's (gpu) Z-buffering but idk it yet [TODO]
+

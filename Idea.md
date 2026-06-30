@@ -6,11 +6,11 @@
 - add to UI reset button to default position & rotation [/]
 
 3. filled face, hidden surface & texture : 
-- need to have a button to activate/desactivate anywhere in this chain : vertices → faces → filled face → hidden surface → texture 
+- need to have a button to activate/desactivate anywhere in this chain : vertices [/] → faces [/] → filled face [/] → hidden surface [/] → texture [TODO] 
 
 4. light & show : 
-- need to have a button to activate/desactivate these effects : source of light → shadowing
--  for light, if possible i would like to be able to move it
+- need to have a button to activate/desactivate these effects : source of light → shadowing [TODO]
+- for light, if possible i would like to be able to move it [TODO]
 
 
 For a futur version , the project should be extended on shape manipulation : 

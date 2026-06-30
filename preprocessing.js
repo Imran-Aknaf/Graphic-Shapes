@@ -37,43 +37,8 @@ function crossProduct(a, b) {
   }
 }
 
-//function computeFaceCenter { } 
 
 function computeNormal(face, model) {
-
-  // This part is needed because the 3 points must be different (eg : uvSphere colapse near poles making 2 "diff" points equal)
-
-  /* const uniqueVerts = []
-
-  for (let i = 0; i < face.length; i++) {
-    const v = model.vs[face[i]]
-
-    let isDuplicate = false
-
-    for (let j = 0; j < uniqueVerts.length; j++) {
-      if (uniqueVerts[j].x === v.x && uniqueVerts[j].y === v.y && uniqueVerts[j].z === v.z) {
-        isDuplicate = true
-        break
-      }
-    }
-
-    if (!isDuplicate) {
-      uniqueVerts.push(v)
-    }
-
-    if (uniqueVerts.length === 3) {
-      break
-    }
-  }
-
-  if (uniqueVerts.length < 3) {
-    console.log("Issue : computing the normal where 2 points are the same")
-  }
-
-  //takes 3 different points that define the plane
-  const v0 = uniqueVerts[0]
-  const v1 = uniqueVerts[1]
-  const v2 = uniqueVerts[2] */
 
   let v0 = model.vs[face[0]]
   let v1 = model.vs[face[1]]
@@ -132,6 +97,15 @@ export function fixWindingOrder(model) {
       //wrong orientation, need to reverse
       model.fs[i] = [...face].reverse()
     }
+  }
+
+  return model
+}
+
+export function fixPenguin(model) {
+  for (let i = 0; i < model.fs.length; i++) {
+    const face = model.fs[i]
+    model.fs[i] = [...face].reverse()
   }
 
   return model

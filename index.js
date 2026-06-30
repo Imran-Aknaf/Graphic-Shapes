@@ -8,7 +8,7 @@ import { vs_uv, fs_uv } from "./UVsphere.js"
 import { vs_ico, fs_ico } from "./icosahedron.js"
 import { vs_tor, fs_tor } from "./torus.js"
 
-import { fixWindingOrder } from "./preprocessing.js"
+import { fixWindingOrder, fixPenguin } from "./preprocessing.js"
 
 console.log("starting...")
 
@@ -27,6 +27,10 @@ const models = [
 for (const model of models) {
   if (model.convex) {
     fixWindingOrder(model);
+  }
+
+  else if (model.name == "Penguin") {
+    fixPenguin(model);
   }
 }
 
@@ -548,6 +552,38 @@ class Renderer {
     return this.dotProduct(normal, view) < 0
   }
 
+
+  buildPainterFaces() {
+    /**
+     * Sort faces based on the depth to the camera
+     * Goal : draw farthest filled face first, and closest will naturally draw on them by filling. 
+     */
+
+    const faces = []
+    for (let j = 0; j < this.model.fs.length; j++) {
+
+      const face = this.model.fs[j]
+
+      if (this.options.showBackfaceCulling && !this.isFrontFace(face)) continue; //skip hidden faces
+
+      let center = { x: 0, y: 0, z: 0 }
+
+      for (const index of face) {
+        center = this.add(center, this.transform(this.model.vs[index]))
+      }
+
+      center = this.multiply(center, 1 / face.length)
+
+      faces.push({ face: face, index: j, depth: center.z })
+    }
+
+    //Sort : furthest first
+    faces.sort((a, b) => b.depth - a.depth);
+
+    return faces
+  }
+
+
   draw_vertices() {
     for (let i = 0; i < this.model.vs.length; i++) {
       const p = this.transform(this.model.vs[i])
@@ -559,13 +595,12 @@ class Renderer {
   }
 
   draw_faces() {
-    for (let j = 0; j < this.model.fs.length; j++) {
-      const face = this.model.fs[j]
 
-      if (this.options.showBackfaceCulling && !this.isFrontFace(face)) continue //skip hidden faces
+    const sortedFaces = this.buildPainterFaces()
 
+    for (const { face, index } of sortedFaces) {
 
-      const faceColor = this.options.showColors ? this.colors[j] : this.options.faceStyle.fill
+      const faceColor = this.options.showColors ? this.colors[index] : this.options.faceStyle.fill
       const edgeColor = this.options.faceStyle.stroke
 
       const screenPoints = []
@@ -581,13 +616,13 @@ class Renderer {
         //don't draw line if too close from camera
         if (p1.z < 0.1 || p2.z < 0.1) {
           validFace = false
-          continue
+          break // will not process this face/polygon
         }
 
         p1 = this.NdcToScreen(this.project(p1))
         p2 = this.NdcToScreen(this.project(p2))
 
-        screenPoints.push(p1) //will be linked with p2 (through i+1) only if both are valid
+        screenPoints.push(p1) //will be linked with p2 (through i+1), so no need to add p2
       }
 
       if (this.options.showFaces && validFace) {
