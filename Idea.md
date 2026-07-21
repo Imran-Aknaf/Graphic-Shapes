@@ -8,10 +8,11 @@
 3. filled face, hidden surface & texture : 
 - need to have a button to activate/desactivate anywhere in this chain : vertices [/] → faces [/] → filled face [/] → hidden surface [/] → texture [TODO] 
 
-4. light & show : 
+4. light & shadow : 
 - need to have a button to activate/desactivate these effects : source of light → shadowing [TODO]
 - for light, if possible i would like to be able to move it [TODO]
 
+5. normals visulation [/]
 
 For a futur version , the project should be extended on shape manipulation : 
 - move object with mouse

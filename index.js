@@ -262,10 +262,15 @@ class Renderer {
     this.rotations_per_second = 1 / 4
 
 
-    this.BACKGROUND = "black"
-    this.FOREGROUND = "green"
-    this.WHITE = "white"
-    this.PURPLE = "#22132D"
+    //this.BACKGROUND = "black"
+    //this.FOREGROUND = "green"
+    //this.WHITE = "white"
+    //this.PURPLE = "#22132D"
+
+    this.BACKGROUND = "#0d1117";   // GitHub dark style
+    this.FOREGROUND = "#39d353";   // green accent
+    this.WHITE = "#e6edf3";
+    this.FACE = "#34495e";
 
     this.vertexSize = 15
     this.vertexShape = "circle"
@@ -278,9 +283,10 @@ class Renderer {
       showFaces: options.showFaces ?? true,
       showColors: options.showColors ?? false,
       showBackfaceCulling: options.showBackfaceCulling ?? true,
+      showNormals: options.showNormals ?? false,
 
       faceStyle: {
-        fill: options.faceStyle?.fill ?? this.PURPLE,
+        fill: options.faceStyle?.fill ?? this.FACE,
         stroke: options.faceStyle?.stroke ?? this.FOREGROUND
       },
 
@@ -325,7 +331,11 @@ class Renderer {
   }
 
   toggleBackfaceCulling() {
-    this.options.showBackfaceCulling = !this.options.showBackfaceCulling;
+    this.options.showBackfaceCulling = !this.options.showBackfaceCulling
+  }
+
+  toggleNormals() {
+    this.options.showNormals = !this.options.showNormals
   }
 
   clear() {
@@ -333,6 +343,25 @@ class Renderer {
     this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
   }
 
+  point({ x, y }, index) {
+    this.ctx.fillStyle = this.options.vertexColor
+
+    if (this.vertexShape == "square") {
+      this.ctx.fillRect(x - this.vertexSize / 2, y - this.vertexSize / 2, this.vertexSize, this.vertexSize)
+    }
+    else if (this.vertexShape == "circle") {
+      this.ctx.beginPath()
+      this.ctx.arc(x, y, this.vertexSize / 2, 0, 2 * Math.PI)
+      this.ctx.fill()
+    }
+
+    //numerate them
+    this.ctx.fillStyle = this.WHITE;
+    this.ctx.font = "bold 12px Arial";
+    this.ctx.textAlign = "center";
+    this.ctx.textBaseline = "middle";
+    this.ctx.fillText(index, x, y);
+  }
 
   line(p1, p2, edgeColor) {
     this.ctx.lineWidth = 2
@@ -357,24 +386,47 @@ class Renderer {
     this.ctx.fill();
   }
 
-  point({ x, y }, index) {
-    this.ctx.fillStyle = this.options.vertexColor
+  arrow(p1, p2, color) {
+    /**
+     * atan2(y,x) = computes circular angle from positive side of x-axis to vector (x,y)
+     * 
+     * then we what is the angle of the normal vector from this x-axis
+     * 
+     * that means p2-arrowSize vector is exactly straight continuation of the normal vector at this angle
+     * 
+     * we want to create the arrow edge from angle - 30° to angle + 30° (30° = PI/6)
+     */
+    this.line(p1, p2, color)
 
-    if (this.vertexShape == "square") {
-      this.ctx.fillRect(x - this.vertexSize / 2, y - this.vertexSize / 2, this.vertexSize, this.vertexSize)
-    }
-    else if (this.vertexShape == "circle") {
-      this.ctx.beginPath()
-      this.ctx.arc(x, y, this.vertexSize / 2, 0, 2 * Math.PI)
-      this.ctx.fill()
-    }
+    const arrowSize = 10
 
-    //numerate them
-    this.ctx.fillStyle = this.WHITE;
-    this.ctx.font = "bold 12px Arial";
-    this.ctx.textAlign = "center";
-    this.ctx.textBaseline = "middle";
-    this.ctx.fillText(index, x, y);
+    const angle = Math.atan2(
+      p2.y - p1.y,
+      p2.x - p1.x
+    )
+
+    this.ctx.fillStyle = color
+    this.ctx.beginPath()
+
+    this.ctx.moveTo(p2.x, p2.y)
+
+    this.ctx.lineTo(
+      p2.x - arrowSize * Math.cos(angle - Math.PI / 6),
+      p2.y - arrowSize * Math.sin(angle - Math.PI / 6)
+    )
+
+    this.ctx.lineTo(
+      p2.x - arrowSize * Math.cos(angle + Math.PI / 6),
+      p2.y - arrowSize * Math.sin(angle + Math.PI / 6)
+    )
+
+    this.ctx.closePath()
+    this.ctx.fill()
+  }
+
+
+  magnitude(v) {
+    return Math.sqrt(v.x ** 2 + v.y ** 2 + v.z ** 2)
   }
 
   subtract(a, b) {
@@ -640,6 +692,66 @@ class Renderer {
     }
   }
 
+  draw_normals() {
+    for (let j = 0; j < this.model.fs.length; j++) {
+      const face = this.model.fs[j]
+
+      if (!this.isFrontFace(face)) continue; //skip hidden faces
+
+      //need 3 surface vector to build perpandicular normal vector
+      const v0 = this.transform(this.model.vs[face[0]])
+      const v1 = this.transform(this.model.vs[face[1]])
+      const v2 = this.transform(this.model.vs[face[2]])
+
+      const e1 = this.subtract(v1, v0)
+      const e2 = this.subtract(v2, v0)
+
+      const normal = this.crossProduct(e1, e2)
+
+      //where does the vector start ? => the face, take center for example
+
+      let center = { x: 0, y: 0, z: 0 }
+      for (const idx of face) {
+        const v = this.transform(this.model.vs[idx])
+        center = this.add(center, v)
+      }
+
+      center = this.multiply(center, 1 / face.length)
+
+      /*
+      - a normal is not a point = a direction => need to add(or substract) it to center to get endPoint
+      - a normal depends on e1,e2 which depends on vertices distance => so big face/small face don't have same normals
+      - therefore, we need to normalise so that length of vector = 1 
+
+
+      1. normalise
+      normal = (10,0,0) => unitNormal = (1,0,0)
+
+      2. can actually control if we anything more or less than length=1 
+
+      3. endPoint = center - unitNormal*length
+      */
+
+      const magnitude = this.magnitude(normal)
+
+
+      const unitNormal = {
+        x: normal.x / magnitude,
+        y: normal.y / magnitude,
+        z: normal.z / magnitude,
+      }
+      const displayLength = 0.3
+
+      const endPoint = this.subtract(center, this.multiply(unitNormal, displayLength))
+
+      //to draw => need to project 3D points onto screen so : 
+      this.arrow(
+        this.NdcToScreen(this.project(center)),
+        this.NdcToScreen(this.project(endPoint)),
+        "#ffd60a"
+      )
+    }
+  }
 
   draw() {
     this.clear()
@@ -650,6 +762,10 @@ class Renderer {
 
     if (this.options.showEdges || this.options.showFaces) {
       this.draw_faces()
+    }
+
+    if (this.options.showNormals) {
+      this.draw_normals()
     }
   }
 
@@ -711,6 +827,7 @@ const mainRenderer = new Renderer(canvas, currentModel, {
   showFaces: true,
   showColors: false,
   showBackfaceCulling: true,
+  showNormals: true,
 })
 
 
@@ -720,6 +837,7 @@ const edgeBtn = document.getElementById("edge-button");
 const faceBtn = document.getElementById("face-button");
 const cullingBtn = document.getElementById("culling-button");
 const colorBtn = document.getElementById("color-button");
+const normalBtn = document.getElementById("normal-button");
 
 //initialise button styles to the current initial state
 vertexBtn.classList.toggle("active", mainRenderer.options.showVertices);
@@ -727,6 +845,7 @@ edgeBtn.classList.toggle("active", mainRenderer.options.showEdges);
 faceBtn.classList.toggle("active", mainRenderer.options.showFaces);
 cullingBtn.classList.toggle("active", mainRenderer.options.showBackfaceCulling);
 colorBtn.classList.toggle("active", mainRenderer.options.showColors);
+normalBtn.classList.toggle("active", mainRenderer.options.showNormals);
 
 vertexBtn.addEventListener("click", () => {
   mainRenderer.toggleVertices();
@@ -753,6 +872,11 @@ colorBtn.addEventListener("click", () => {
   mainRenderer.toggleColors();
   colorBtn.classList.toggle("active", mainRenderer.options.showColors);
 });
+
+normalBtn.addEventListener("click", () => {
+  mainRenderer.toggleNormals();
+  normalBtn.classList.toggle("active", mainRenderer.options.showNormals);
+})
 
 document.getElementById("reset-button").addEventListener("click", () => {
   mainRenderer.camera.reset();
