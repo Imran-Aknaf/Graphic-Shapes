@@ -1,4 +1,15 @@
 /*
+root = root element of HTML document = <html>
+in it , we will define this globally because it's the root
+
+CSS variable syntax : --variable: value;
+*/
+
+:root {
+  --canvas-background-color: #0d1117;
+}
+
+/*
 body is a parent/container of canvas
 to place an item/child in the horizontal center of the container/parent : 
 - display: flex;
@@ -9,7 +20,7 @@ body {
   /*<body> has default margin (= 8px)*/
   margin: 0;
 
-  background-color: black;
+  background-color: var(--canvas-background-color);
   /* Hide scrollbars */
   overflow: hidden;
 
@@ -41,11 +52,11 @@ Grid is :
   grid-template-columns: 1fr 1fr 1fr;
   grid-template-rows: 1fr 1fr 1fr;
 
-  background-color: black;
+  background-color: var(--canvas-background-color);
 }
 
 .menu-box {
-  background-color: black;
+  background-color: var(--canvas-background-color);
   border: 2px solid white;
 
   display: flex;

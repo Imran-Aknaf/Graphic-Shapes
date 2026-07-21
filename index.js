@@ -34,10 +34,21 @@ for (const model of models) {
   }
 }
 
+//colors definitions
+
 const distinctColors = [
   '#e6194B', '#3cb44b', '#ffe119', '#4363d8', '#f58231', '#911eb4',
   '#42d4f4', '#f032e6', '#bfef45', '#fabed4', '#469990', '#dcbeff'
 ];
+
+/**
+ * document.documentElement = html/:root
+ * getComputedStyle(<html>) = give me final CSS values applied to this element (html)
+ */
+const root = getComputedStyle(document.documentElement)
+const BACKGROUND_COLOR = root.getPropertyValue("--canvas-background-color").trim()
+
+
 
 
 /**
@@ -267,8 +278,8 @@ class Renderer {
     //this.WHITE = "white"
     //this.PURPLE = "#22132D"
 
-    this.BACKGROUND = "#0d1117";   // GitHub dark style
-    this.FOREGROUND = "#39d353";   // green accent
+    this.BACKGROUND = BACKGROUND_COLOR //"#0d1117";
+    this.FOREGROUND = "#39d353";
     this.WHITE = "#e6edf3";
     this.FACE = "#34495e";
 
