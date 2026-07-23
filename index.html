@@ -1,25 +1,42 @@
 <!DOCTYPE html>
-<title>Shapes Demo</title>
+<html>
 
 <head>
+  <title>Shapes Demo</title>
   <link rel="stylesheet" href="style.css">
 </head>
 
-<div id="shape-ui">
-  <button class="ui-button" id="vertex-button">Vertices</button>
-  <button class="ui-button" id="edge-button">Edges</button>
-  <button class="ui-button" id="face-button">Faces</button>
-  <button class="ui-button" id="culling-button">Backface Culling</button>
-  <button class="ui-button" id="color-button">Colors</button>
-  <button class="ui-button" id="normal-button">Normals</button>
-</div>
-<div id="camera-ui">
-  <button class="ui-button" id="reset-button">Reset</button>
-</div>
+<body>
+  <div id="shape-ui">
+    <button class="ui-button" id="vertex-button">Vertices</button>
+    <button class="ui-button" id="edge-button">Edges</button>
+    <button class="ui-button" id="face-button">Faces</button>
+    <button class="ui-button" id="culling-button">Backface Culling</button>
+    <button class="ui-button" id="color-button">Colors</button>
+    <button class="ui-button" id="normal-button">Normals</button>
+  </div>
+  <div id="camera-ui">
+    <button class="ui-button" id="reset-button">Reset</button>
+  </div>
+  <div id="light-ui">
 
-<button id="back-button">Back</button>
+    <div class="light-control">
 
-<div id="menu"></div>
-<canvas id="canvas"></canvas> <!--Just a container for to display our graphic logic-->
+      <button class="ui-button" id="ambient-button">
+        Ambient
+      </button>
 
-<script type="module" src="index.js"></script>
+      <input id="ambient-slider" type="range" min="0" max="1" step="0.01" value="0.5">
+
+    </div>
+  </div>
+
+  <button id="back-button">Back</button>
+
+  <div id="menu"></div>
+  <canvas id="canvas"></canvas> <!--Just a container for to display our graphic logic-->
+
+  <script type="module" src="index.js"></script>
+</body>
+
+</html>

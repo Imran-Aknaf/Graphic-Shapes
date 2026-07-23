@@ -136,9 +136,13 @@ let currentModel = models[0];
 
 const canvas = document.getElementById("canvas");
 const menu = document.getElementById("menu")
+
 const backbutton = document.getElementById("back-button")
+
+//get UI categories (div)
 const shapeUI = document.getElementById("shape-ui")
 const cameraUI = document.getElementById("camera-ui")
+const lightUI = document.getElementById("light-ui")
 
 backbutton.addEventListener("click", () => {
   menu.style.display = "grid"
@@ -148,6 +152,7 @@ backbutton.addEventListener("click", () => {
 
   shapeUI.style.display = "none"
   cameraUI.style.display = "none"
+  lightUI.style.display = "none"
 
   mainRenderer.stop()
 
@@ -181,6 +186,7 @@ for (const model of models) {
 
     shapeUI.style.display = "flex"
     cameraUI.style.display = "flex"
+    lightUI.style.display = "flex"
 
     mainRenderer.start()
 
@@ -221,6 +227,32 @@ resizeAllPreviews()
 window.addEventListener("resize", resize)
 //window.addEventListener("resize", resizeAllPreviews)
 
+class Color {
+  constructor(r = 0, g = 0, b = 0) {
+    this.r = r
+    this.g = g
+    this.b = b
+  }
+
+  rgbToCss() {
+
+    const r = Math.max(0, Math.min(255, this.r))
+    const g = Math.max(0, Math.min(255, this.g))
+    const b = Math.max(0, Math.min(255, this.b))
+
+    return `rgb(${r},${g},${b})`
+  }
+
+  static fromHex(hex) {
+    const num = parseInt(hex.replace('#', ''), 16);
+
+    return new Color(
+      (num >> 16) & 255,
+      (num >> 8) & 255,
+      num & 255
+    )
+  }
+}
 
 class Camera {
   constructor() {
@@ -261,24 +293,20 @@ class Renderer {
 
     this.camera = options.camera || null
 
+    //transformations
     this.angle = 0
     this.dx = 0
     this.dy = 0
     this.dz = 1
+    this.rotations_per_second = 1 / 4
 
+    //animation
     this.FPS = 60
     this.frameDuration = 1000 / this.FPS
     this.dt = 1 / this.FPS //same as frameDuration but in seconds = delta-time between frames in one second
 
-    this.rotations_per_second = 1 / 4
-
-
-    //this.BACKGROUND = "black"
-    //this.FOREGROUND = "green"
-    //this.WHITE = "white"
-    //this.PURPLE = "#22132D"
-
-    this.BACKGROUND = BACKGROUND_COLOR //"#0d1117";
+    //styling
+    this.BACKGROUND = BACKGROUND_COLOR
     this.FOREGROUND = "#39d353";
     this.WHITE = "#e6edf3";
     this.FACE = "#34495e";
@@ -286,6 +314,7 @@ class Renderer {
     this.vertexSize = 15
     this.vertexShape = "circle"
 
+    //styling & button options
     this.options = {
       rotate: options.rotate ?? false,
 
@@ -305,6 +334,15 @@ class Renderer {
     }
 
     this.colors = this.initColors()
+
+    //lighting
+    this.lights = {
+      ambient: {
+        enabled: true,
+        strength: 0.5
+      }
+
+    }
 
     this.running = false;
   }
@@ -347,6 +385,10 @@ class Renderer {
 
   toggleNormals() {
     this.options.showNormals = !this.options.showNormals
+  }
+
+  toggleAmbientLighting() {
+    this.lights.ambient.enabled = !this.lights.ambient.enabled
   }
 
   clear() {
@@ -393,7 +435,7 @@ class Renderer {
     }
     this.ctx.closePath()
 
-    this.ctx.fillStyle = faceColor
+    this.ctx.fillStyle = faceColor.rgbToCss()
     this.ctx.fill();
   }
 
@@ -568,6 +610,15 @@ class Renderer {
   }
 
 
+  applyAmbient(color, ambientStrength) {
+    return new Color(
+      color.r * ambientStrength,
+      color.g * ambientStrength,
+      color.b * ambientStrength
+    )
+  }
+
+
   isFrontFace(face) {
     /** 
      * Implements backface culling by detecting face orientation based on their normal vector direction compared to face-camera vector direction
@@ -647,6 +698,19 @@ class Renderer {
   }
 
 
+  calculateLighting(face, materialColor) {
+    let color = materialColor
+
+    if (this.lights.ambient.enabled) {
+      color = this.applyAmbient(color, this.lights.ambient.strength)
+    }
+
+    //TODO
+
+    return color
+  }
+
+
   draw_vertices() {
     for (let i = 0; i < this.model.vs.length; i++) {
       const p = this.transform(this.model.vs[i])
@@ -663,7 +727,11 @@ class Renderer {
 
     for (const { face, index } of sortedFaces) {
 
-      const faceColor = this.options.showColors ? this.colors[index] : this.options.faceStyle.fill
+      const cssColor = this.options.showColors ? this.colors[index] : this.options.faceStyle.fill
+      const materialColor = Color.fromHex(cssColor)
+
+      const faceColor = this.calculateLighting(face, materialColor)
+
       const edgeColor = this.options.faceStyle.stroke
 
       const screenPoints = []
@@ -842,13 +910,21 @@ const mainRenderer = new Renderer(canvas, currentModel, {
 })
 
 
-
+//buttons
 const vertexBtn = document.getElementById("vertex-button");
 const edgeBtn = document.getElementById("edge-button");
 const faceBtn = document.getElementById("face-button");
 const cullingBtn = document.getElementById("culling-button");
 const colorBtn = document.getElementById("color-button");
 const normalBtn = document.getElementById("normal-button");
+const ambientBtn = document.getElementById("ambient-button");
+
+//sliders
+const ambientSlider = document.getElementById("ambient-slider")
+
+//default load state
+ambientSlider.disabled = !mainRenderer.lights.ambient.enabled;
+ambientSlider.value = mainRenderer.lights.ambient.strength
 
 //initialise button styles to the current initial state
 vertexBtn.classList.toggle("active", mainRenderer.options.showVertices);
@@ -857,6 +933,7 @@ faceBtn.classList.toggle("active", mainRenderer.options.showFaces);
 cullingBtn.classList.toggle("active", mainRenderer.options.showBackfaceCulling);
 colorBtn.classList.toggle("active", mainRenderer.options.showColors);
 normalBtn.classList.toggle("active", mainRenderer.options.showNormals);
+ambientBtn.classList.toggle("active", mainRenderer.lights.ambient.enabled);
 
 vertexBtn.addEventListener("click", () => {
   mainRenderer.toggleVertices();
@@ -889,6 +966,17 @@ normalBtn.addEventListener("click", () => {
   normalBtn.classList.toggle("active", mainRenderer.options.showNormals);
 })
 
+ambientBtn.addEventListener("click", () => {
+  mainRenderer.toggleAmbientLighting()
+  ambientBtn.classList.toggle("active", mainRenderer.lights.ambient.enabled)
+  ambientSlider.disabled = !mainRenderer.lights.ambient.enabled
+})
+
 document.getElementById("reset-button").addEventListener("click", () => {
   mainRenderer.camera.reset();
+})
+
+ambientSlider.addEventListener("input", () => {
+  //.value returns a string
+  mainRenderer.lights.ambient.strength = Number(ambientSlider.value)
 })

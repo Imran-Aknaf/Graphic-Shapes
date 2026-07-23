@@ -654,10 +654,142 @@ Solution :
 3. when all faces are processed, just sort them from farthest to nearest
 4. Draw them in that order
 
-![Torus filled](torus-filled.png)
-![Penguin filled](penguin-filled.png)
+![Torus filled](./illustrations/torus-filled.png)
+![Penguin filled](./illustrations/penguin-filled.png)
 
 ## A next step after that for more complex situation
 
 It's (gpu) Z-buffering but idk it yet [TODO]
 
+# Lighting
+
+I was able to comeback to this project after sometimes :). Today i wanted to start a new chapter which is lighting. 
+
+At the end of the day, this whole project is changing pixels right. So let's look at an individual pixel. Why does a pixel should have a specific color in terms of light affecting it ?
+
+1. the light source : Where does the energy come from ?
+2. the surface response (material) : how does the surface react to received energy ?
+3. the camera (viewer) : from wich direction do we observe the result (=the pixel)
+
+
+## 1. Light sources
+
+Here we should talk about where does the light come from ? what direction does it have ? how strong is it ? does distance matter ?
+
+### A) Ambient light
+
+- it's a sort of fake light.
+- it's a overall illumination in the whole space = "global illumination"
+
+So we define it as "a global, uniform light source that illuminates every object in a scene equally from all directions"
+- has no position
+- has no direction
+
+And why is it used for ? well imagine later we implement real lighting. if a face or area is not touched by light, it will fall into complete darkness. But by having Ambient light on, it will not as this is a global applied light. 
+
+Mathematically :
+
+- ambientStrengh = constant 
+- constant ∈ [0; 1] 
+- color = objectColor × ambientStrength
+
+Notice: Ambient light can only darken the pixel color => because ambientStrength ≤ 1 => Ambient light does not create brightness, it only prevents complete darkness.
+
+### B) Directional light
+
+- it's a source infinitely far away => eg: the sun
+- because it's so far, every object in the scene is considered to receives rays in the same direction. 
+- => every ray is considered parallel
+
+So we define the light through: 
+- direction
+- intensity 
+
+- distance => does not matter as it's so far it's basically at the same distance to everyone
+- exact position => does not matter, it's all parallel rays because it's so far away => but we still need to know generally where the source is globally compared the scene so we know how rays apply => but this is done via "light direction"
+
+- convention of direction is usually: surface → light
+- so L = (0,1,0) => means light is above surfaces
+
+Mathematically : 
+
+=> A surface receives more light when it faces the light.
+=> how do we know how much a surface "faces" the light
+
+- 1. compute normalized surface normal vector => N̂ 
+- 2. compute normalized light direction => L
+
+=> both vector are normalized => they both have lenght 1
+
+that means that :
+- A · B = |A||B|cos(θ)
+- N̂ · L = |N̂||L|cos(θ)
+
+- => |N̂|=|L|=1
+- N̂ · L = cos(θ)
+
+- same direction => dot = 1 => cos(θ) = 1 => θ = 0°
+- perpendicular => dot = 0 => 90°
+- opposite direction => dot = -1 => 180°
+
+dot = 0 : (90° angle) => vectors are orthogonal 
+dot > 0 : (angle < 90°) =>  vectors point in a similar direction 
+dot < 0 : (angle > 90°) => vectors point in opposite directions 
+
+what we want : 
+- if same direction: maximal illumination
+- if perpendicular: no illumination
+- anything in between: should receive proportional illumination
+- anything negative: no illumination
+
+Formula (Lambert Diffuse): 
+- DiffuseFactor = max(N̂ · L, 0)
+- clamp to 0 because negative should have no illumination => as light is behind the surface
+
+DiffuseColor = objectColor × DiffuseFactor
+
+### C) Point light
+
+- it's a bulb/candle
+- So it has a position => lightPosition = (x,y,z)
+
+- but also, recall that a bulb or a candle is such that it's a point of light that emits light rays in all directions
+- so there are many light directions
+
+- but we only care the rays that touches our faces, so we will compute those directions
+- for each surface: L = lightPosition - surfacePosition 
+- so each surface will have a different direction to light => each surface will receive different light
+
+Mathematically : 
+1. compute: L = lightPosition - surfacePosition
+2. this give the vector:  surface → light
+3. L = normalize(vector)
+
+Formula (Lambert Diffuse again): 
+- DiffuseFactor = max(N̂ · L, 0) => just here the L will change for every surface compared to before
+
+DiffuseColor = objectColor × DiffuseFactor
+
+### D) Point light attenuation
+
+- so this is basically Point Light but now distance matters
+- close = more intensity
+- we know intensity ∝ 1 / d²,    d = distance between light and surface   
+- this behavior of light is => attenuation
+
+Formula : 
+- attenuation = 1 / (1 + k*d²),     
+- d = distance, k = falloff coefficient
+
+brightness = DiffuseFactor × attenuation 
+
+- DiffuseFactor: orientation effect
+- attenuation: distance effect
+
+then:
+- DiffuseColor = objectColor × brightness
+
+[Suite : TODO]
+
+# Hex To RGB explained : 
+![Hex to RGB](./illustrations/HexToRGB.png)
