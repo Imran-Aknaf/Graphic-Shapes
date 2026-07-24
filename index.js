@@ -235,7 +235,7 @@ class Color {
   }
 
   rgbToCss() {
-
+    //forced between [0;255]
     const r = Math.max(0, Math.min(255, this.r))
     const g = Math.max(0, Math.min(255, this.g))
     const b = Math.max(0, Math.min(255, this.b))
@@ -324,6 +324,7 @@ class Renderer {
       showColors: options.showColors ?? false,
       showBackfaceCulling: options.showBackfaceCulling ?? true,
       showNormals: options.showNormals ?? false,
+      showSun: options.showSun ?? false,
 
       faceStyle: {
         fill: options.faceStyle?.fill ?? this.FACE,
@@ -340,6 +341,13 @@ class Renderer {
       ambient: {
         enabled: true,
         strength: 0.5
+      },
+
+      directional: {
+        enabled: true,
+        elevation: 90,  //-90 → 90
+        rotation: 0, //0 → 360
+        strength: 1
       }
 
     }
@@ -389,6 +397,10 @@ class Renderer {
 
   toggleAmbientLighting() {
     this.lights.ambient.enabled = !this.lights.ambient.enabled
+  }
+
+  toggleDirectionalLighting() {
+    this.lights.directional.enabled = !this.lights.directional.enabled
   }
 
   clear() {
@@ -482,6 +494,25 @@ class Renderer {
     return Math.sqrt(v.x ** 2 + v.y ** 2 + v.z ** 2)
   }
 
+  normalize(v) {
+    /*
+    Converts a vector into a unit vector.
+  
+    A unit vector keeps the same direction but has a length of 1.
+    v̂ = v / |v|
+  
+    Used when direction matters but magnitude does not.
+    */
+
+    const magnitude = this.magnitude(v)
+
+    return {
+      x: v.x / magnitude,
+      y: v.y / magnitude,
+      z: v.z / magnitude
+    }
+  }
+
   subtract(a, b) {
     return {
       x: a.x - b.x,
@@ -526,6 +557,67 @@ class Renderer {
       y: a.z * b.x - a.x * b.z,
       z: a.x * b.y - a.y * b.x
     }
+  }
+
+  computeModelCenter() {
+
+    let center = { x: 0, y: 0, z: 0 }
+
+    for (let v of this.model.vs) {
+      v = this.transform(v)
+      center = this.add(center, v)
+    }
+
+    return this.multiply(center, 1 / this.model.vs.length)
+  }
+
+  computeFaceCenter(face) {
+    /*
+    Computes the center of a face. 
+    Center = (v0 + v1 + ... + vn) / numberOfVertices
+    */
+
+    let center = { x: 0, y: 0, z: 0 }
+
+    for (const idx of face) {
+      const v = this.transform(this.model.vs[idx])
+      center = this.add(center, v)
+    }
+
+    return this.multiply(center, 1 / face.length)
+  }
+
+  computeFaceNormal(face) {
+    /*
+    Computes the outward normal vector of a face.
+  
+    Uses the cross product of two edges in the face plane.
+  
+    N = (v1-v0) × (v2-v0)
+
+    The normal is perpendicular to the face surface.
+    Its direction depends on the vertex winding order.
+
+    Our cross product winding convention gives normals pointing inward.
+    So we actually inverse here the vector to output outward normal only.
+    This way we can do our calculations as outward normal is what is used.
+    */
+
+    //takes 3 points that define the plane
+    const v0 = this.transform(this.model.vs[face[0]])
+    const v1 = this.transform(this.model.vs[face[1]])
+    const v2 = this.transform(this.model.vs[face[2]])
+
+    //takes the vectors lying on the surface on this plane
+    const e1 = this.subtract(v1, v0)
+    const e2 = this.subtract(v2, v0)
+
+    //takes the perpendicular vector of this plane
+    //return this.crossProduct(e1, e2)
+    const inwardNormal = this.crossProduct(e1, e2)
+    const outwardNormal = this.multiply(inwardNormal, -1)
+
+    return outwardNormal
   }
 
   NdcToScreen({ x, y }) {
@@ -609,12 +701,72 @@ class Renderer {
     return p
   }
 
+  applyAmbient() {
+    if (!this.lights.ambient.enabled) return 0
 
-  applyAmbient(color, ambientStrength) {
+    return this.lights.ambient.strength
+  }
+
+  computeDirectionToLight() {
+    /**
+     * Directional Light => no position in the world, only a direction
+     * 
+     * direction = angle
+     * 
+     * when camera rotates => objects affected => normals change 
+     * 
+     * so light direction needs to also change when camera rotates
+     */
+
+    //y = vertical
+    const elevation = this.lights.directional.elevation * Math.PI / 180
+
+    //x= left/right, z= front/back (depth)
+    const azimuth = this.lights.directional.rotation * Math.PI / 180
+
+    let light = {
+      x: Math.cos(elevation) * Math.sin(azimuth),
+      y: Math.sin(elevation),
+      z: Math.cos(elevation) * Math.cos(azimuth)
+    }
+
+    // convert world direction -> camera direction
+    if (this.camera) {
+      light = this.rotate_xz(light, -this.camera.yaw)
+      light = this.rotate_yz(light, -this.camera.pitch)
+    }
+
+    return light
+  }
+
+  applyDirectional(face) {
+    if (!this.lights.directional.enabled) return 0
+
+    const normal = this.computeFaceNormal(face)
+    const normalized_normal = this.normalize(normal)
+
+    //global lightDirection here, so
+    const L = this.computeDirectionToLight() //surface → Light vector
+    const normalized_L = this.normalize(L)
+
+    const diffuseFactor = this.dotProduct(normalized_normal, normalized_L)
+
+    const brightness = Math.max(diffuseFactor, 0) * this.lights.directional.strength
+
+    return brightness
+  }
+
+  calculateLighting(face, materialColor) {
+    let brightness = 0
+
+    brightness += this.applyAmbient()
+    brightness += this.applyDirectional(face)
+
+
     return new Color(
-      color.r * ambientStrength,
-      color.g * ambientStrength,
-      color.b * ambientStrength
+      materialColor.r * brightness,
+      materialColor.g * brightness,
+      materialColor.b * brightness
     )
   }
 
@@ -622,39 +774,23 @@ class Renderer {
   isFrontFace(face) {
     /** 
      * Implements backface culling by detecting face orientation based on their normal vector direction compared to face-camera vector direction
-     * Depends totally on a consistent winding order of face vertices
+     * Normal vector direction depends totally on a consistent winding order of face vertices
      * 
      * In our case : 
      * - CCW = face is seen by camera
      * - CW = face is not seen by camera
      * 
      * Also after test & trial, in our situation, normal will be oriented opposite to face->camera, when face need to be shown :
-     * - So we use dot < 0 as a check
+     * - (So we use dot < 0 as a check) 
+     * - [Update]====== we no longer do this, we inverse normal directly in method ======[Update]
      * 
      * Assumes camera is at (0,0,0) at all point wich should be the case as we only move the objects, not the camera
     */
 
 
-    //takes 3 points that define the plane
-    const v0 = this.transform(this.model.vs[face[0]])
-    const v1 = this.transform(this.model.vs[face[1]])
-    const v2 = this.transform(this.model.vs[face[2]])
+    const normal = this.computeFaceNormal(face)
 
-    //takes the vectors lying on the surface on this plane
-    const e1 = this.subtract(v1, v0)
-    const e2 = this.subtract(v2, v0)
-
-    //takes the perpendicular vector of this plane = where the face "looks" at
-    const normal = this.crossProduct(e1, e2)
-
-
-    //computes face center
-    let center = { x: 0, y: 0, z: 0 }
-
-    for (const index of face)
-      center = this.add(center, this.transform(this.model.vs[index]))
-
-    center = this.multiply(center, 1 / face.length)
+    const center = this.computeFaceCenter(face)
 
     //camera is at origin, so this compute [face -> camera] vector : A -> B = B-A
     const view = {
@@ -663,7 +799,7 @@ class Renderer {
       z: -center.z
     }
 
-    return this.dotProduct(normal, view) < 0
+    return this.dotProduct(normal, view) > 0
   }
 
 
@@ -680,13 +816,7 @@ class Renderer {
 
       if (this.options.showBackfaceCulling && !this.isFrontFace(face)) continue; //skip hidden faces
 
-      let center = { x: 0, y: 0, z: 0 }
-
-      for (const index of face) {
-        center = this.add(center, this.transform(this.model.vs[index]))
-      }
-
-      center = this.multiply(center, 1 / face.length)
+      const center = this.computeFaceCenter(face)
 
       faces.push({ face: face, index: j, depth: center.z })
     }
@@ -695,19 +825,6 @@ class Renderer {
     faces.sort((a, b) => b.depth - a.depth);
 
     return faces
-  }
-
-
-  calculateLighting(face, materialColor) {
-    let color = materialColor
-
-    if (this.lights.ambient.enabled) {
-      color = this.applyAmbient(color, this.lights.ambient.strength)
-    }
-
-    //TODO
-
-    return color
   }
 
 
@@ -775,53 +892,30 @@ class Renderer {
     for (let j = 0; j < this.model.fs.length; j++) {
       const face = this.model.fs[j]
 
-      if (!this.isFrontFace(face)) continue; //skip hidden faces
+      if (!this.isFrontFace(face)) continue; //only draw normals of faces visible to the camera
 
-      //need 3 surface vector to build perpandicular normal vector
-      const v0 = this.transform(this.model.vs[face[0]])
-      const v1 = this.transform(this.model.vs[face[1]])
-      const v2 = this.transform(this.model.vs[face[2]])
-
-      const e1 = this.subtract(v1, v0)
-      const e2 = this.subtract(v2, v0)
-
-      const normal = this.crossProduct(e1, e2)
+      const normal = this.computeFaceNormal(face)
 
       //where does the vector start ? => the face, take center for example
-
-      let center = { x: 0, y: 0, z: 0 }
-      for (const idx of face) {
-        const v = this.transform(this.model.vs[idx])
-        center = this.add(center, v)
-      }
-
-      center = this.multiply(center, 1 / face.length)
+      const center = this.computeFaceCenter(face)
 
       /*
       - a normal is not a point = a direction => need to add(or substract) it to center to get endPoint
-      - a normal depends on e1,e2 which depends on vertices distance => so big face/small face don't have same normals
+      - a normal magnitude depends on e1,e2 which depends on vertices distance => so big face/small face don't have same normals
       - therefore, we need to normalise so that length of vector = 1 
 
-
-      1. normalise
-      normal = (10,0,0) => unitNormal = (1,0,0)
-
+      1. normalize: normal = (10,0,0) => unitNormal = (1,0,0)
       2. can actually control if we anything more or less than length=1 
-
-      3. endPoint = center - unitNormal*length
+      3. endPoint = center + unitNormal*length
       */
 
-      const magnitude = this.magnitude(normal)
-
-
-      const unitNormal = {
-        x: normal.x / magnitude,
-        y: normal.y / magnitude,
-        z: normal.z / magnitude,
-      }
+      const unitNormal = this.normalize(normal)
       const displayLength = 0.3
 
-      const endPoint = this.subtract(center, this.multiply(unitNormal, displayLength))
+      const endPoint = this.add(
+        center,
+        this.multiply(unitNormal, displayLength)
+      )
 
       //to draw => need to project 3D points onto screen so : 
       this.arrow(
@@ -830,6 +924,37 @@ class Renderer {
         "#ffd60a"
       )
     }
+  }
+
+  draw_directional_light() {
+
+    if (!this.lights.directional.enabled) return;
+
+    const lightDir = this.normalize(this.computeDirectionToLight()) //surface → sun
+    const distance = 1;
+
+    const objectCenter = this.computeModelCenter()
+
+    const sunPosition = this.add(objectCenter, this.multiply(lightDir, distance))
+
+    let p = sunPosition
+
+    if (p.z < 0.1) return
+
+    p = this.NdcToScreen(this.project(p))
+
+    this.ctx.fillStyle = "yellow"
+
+    this.ctx.beginPath()
+    this.ctx.arc(
+      p.x,
+      p.y,
+      10,
+      0,
+      Math.PI * 2
+    )
+
+    this.ctx.fill()
   }
 
   draw() {
@@ -846,6 +971,10 @@ class Renderer {
     if (this.options.showNormals) {
       this.draw_normals()
     }
+    if (this.options.showSun) {
+      this.draw_directional_light()
+    }
+
   }
 
   update() {
@@ -907,6 +1036,7 @@ const mainRenderer = new Renderer(canvas, currentModel, {
   showColors: false,
   showBackfaceCulling: true,
   showNormals: true,
+  showSun: true,
 })
 
 
@@ -918,15 +1048,32 @@ const cullingBtn = document.getElementById("culling-button");
 const colorBtn = document.getElementById("color-button");
 const normalBtn = document.getElementById("normal-button");
 const ambientBtn = document.getElementById("ambient-button");
+const directionalBtn = document.getElementById("directional-button");
+
 
 //sliders
 const ambientSlider = document.getElementById("ambient-slider")
+const directionalStrengthSlider = document.getElementById("directional-strength-slider")
+const directionalElevationSlider = document.getElementById("directional-elevation-slider")
+const directionalRotationSlider = document.getElementById("directional-rotation-slider")
 
-//default load state
+/*Renderer is source of truth, initialise UI based on it*/
+
+//Ambient
 ambientSlider.disabled = !mainRenderer.lights.ambient.enabled;
-ambientSlider.value = mainRenderer.lights.ambient.strength
+ambientSlider.value = mainRenderer.lights.ambient.strength;
 
-//initialise button styles to the current initial state
+//Directional
+directionalStrengthSlider.disabled = !mainRenderer.lights.directional.enabled;
+directionalElevationSlider.disabled = !mainRenderer.lights.directional.enabled;
+directionalRotationSlider.disabled = !mainRenderer.lights.directional.enabled;
+
+directionalStrengthSlider.value = mainRenderer.lights.directional.strength;
+directionalElevationSlider.value = mainRenderer.lights.directional.elevation;
+directionalRotationSlider.value = mainRenderer.lights.directional.rotation;
+
+
+/*initialise button styles to the current initial state*/
 vertexBtn.classList.toggle("active", mainRenderer.options.showVertices);
 edgeBtn.classList.toggle("active", mainRenderer.options.showEdges);
 faceBtn.classList.toggle("active", mainRenderer.options.showFaces);
@@ -934,6 +1081,9 @@ cullingBtn.classList.toggle("active", mainRenderer.options.showBackfaceCulling);
 colorBtn.classList.toggle("active", mainRenderer.options.showColors);
 normalBtn.classList.toggle("active", mainRenderer.options.showNormals);
 ambientBtn.classList.toggle("active", mainRenderer.lights.ambient.enabled);
+directionalBtn.classList.toggle("active", mainRenderer.lights.directional.enabled);
+
+/*Buttons Listener*/
 
 vertexBtn.addEventListener("click", () => {
   mainRenderer.toggleVertices();
@@ -972,11 +1122,35 @@ ambientBtn.addEventListener("click", () => {
   ambientSlider.disabled = !mainRenderer.lights.ambient.enabled
 })
 
+directionalBtn.addEventListener("click", () => {
+  mainRenderer.toggleDirectionalLighting()
+
+  directionalBtn.classList.toggle("active", mainRenderer.lights.directional.enabled)
+
+  directionalStrengthSlider.disabled = !mainRenderer.lights.directional.enabled;
+  directionalElevationSlider.disabled = !mainRenderer.lights.directional.enabled;
+  directionalRotationSlider.disabled = !mainRenderer.lights.directional.enabled;
+});
+
 document.getElementById("reset-button").addEventListener("click", () => {
   mainRenderer.camera.reset();
 })
 
+/*Sliders Listener*/
+
 ambientSlider.addEventListener("input", () => {
   //.value returns a string
   mainRenderer.lights.ambient.strength = Number(ambientSlider.value)
+})
+
+directionalStrengthSlider.addEventListener("input", () => {
+  mainRenderer.lights.directional.strength = Number(directionalStrengthSlider.value);
+})
+
+directionalElevationSlider.addEventListener("input", () => {
+  mainRenderer.lights.directional.elevation = Number(directionalElevationSlider.value);
+})
+
+directionalRotationSlider.addEventListener("input", () => {
+  mainRenderer.lights.directional.rotation = Number(directionalRotationSlider.value);
 })

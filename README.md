@@ -691,30 +691,28 @@ Mathematically :
 
 - ambientStrengh = constant 
 - constant ∈ [0; 1] 
-- color = objectColor × ambientStrength
+
+- brightness = ambientStrength
+- color = objectColor × brightness
 
 Notice: Ambient light can only darken the pixel color => because ambientStrength ≤ 1 => Ambient light does not create brightness, it only prevents complete darkness.
 
-### B) Directional light
+### B) Directional light (Lambert diffuse)
 
 - it's a source infinitely far away => eg: the sun
-- because it's so far, every object in the scene is considered to receives rays in the same direction. 
-- => every ray is considered parallel
+- the sun is so far away that, the rays hitting you, a building or a tree are all perfectly parallel 
 
-So we define the light through: 
-- direction
-- intensity 
+- So position of the sun/light is of no use here
+1. we only need to know the Light Direction
+2. and of course the Light Intensity/Strengh
 
-- distance => does not matter as it's so far it's basically at the same distance to everyone
-- exact position => does not matter, it's all parallel rays because it's so far away => but we still need to know generally where the source is globally compared the scene so we know how rays apply => but this is done via "light direction"
 
-- convention of direction is usually: surface → light
+Convention of direction is usually: surface → light:
 - so L = (0,1,0) => means light is above surfaces
 
 Mathematically : 
 
-=> A surface receives more light when it faces the light.
-=> how do we know how much a surface "faces" the light
+=> how do we know how much a surface capures light rays
 
 - 1. compute normalized surface normal vector => N̂ 
 - 2. compute normalized light direction => L
@@ -736,6 +734,8 @@ dot = 0 : (90° angle) => vectors are orthogonal
 dot > 0 : (angle < 90°) =>  vectors point in a similar direction 
 dot < 0 : (angle > 90°) => vectors point in opposite directions 
 
+![Direction Light](./illustrations/directional-light.png)
+
 what we want : 
 - if same direction: maximal illumination
 - if perpendicular: no illumination
@@ -746,7 +746,8 @@ Formula (Lambert Diffuse):
 - DiffuseFactor = max(N̂ · L, 0)
 - clamp to 0 because negative should have no illumination => as light is behind the surface
 
-DiffuseColor = objectColor × DiffuseFactor
+- brightness = max(N̂ · L, 0) × directionalStrength
+- color = objectColor × brightness
 
 ### C) Point light
 
@@ -789,7 +790,54 @@ brightness = DiffuseFactor × attenuation
 then:
 - DiffuseColor = objectColor × brightness
 
-[Suite : TODO]
+
+### Everything together
+- Our goal is for each face (or pixel later), to ask : How much light reaches this surface.
+- so the quantity of interest is amount of light energy arriving at this face => call it "brightness"
+
+We have many light sources :
+- each contributes some energy (computed through their formula)
+- we will thus add all these energy as the "total energy" arriving at this face
+
+Logical => more light => surface is brighter
+
+Ambient:
+- brightness += constant
+
+Directional: 
+- brightness += max(N̂ · L, 0) × strength
+
+Only when brightness/energy the face receive is fully computed, can we make the material react to this amount of light :
+- finalColor = materialColor × brightness
 
 # Hex To RGB explained : 
 ![Hex to RGB](./illustrations/HexToRGB.png)
+
+# Direction Light Control explained
+
+![Directional control](./illustrations/direction-light-control.png)
+
+with this image we should get intuition behind this : 
+- user inputs "Height" slider => elevation: -90 → 90
+- user inputs "Rotation" slider => azimuth: 0 → 360
+
+With the heightAngle, rotationAngle => want to find the vector directionToLight. 
+
+1. transform degree in gradients to use cos,sin => rad = degree * (pi/180)
+
+2. formula :
+x: Math.cos(h) * Math.sin(r),
+y: Math.sin(h),
+z: Math.cos(h) * Math.cos(r)
+
+y => when sun rotates, to find it's height, project it onto y-axis => done via sin()
+
+x => when sun rotates, to find it's x, project it onto x-axis => cos()
+
+y => when sun rotates, to find it's z, project it onto z-axis => sin()
+
+what about Math.cos(h) in x,z ?
+
+Let's look at it : 
+- if h = 0° => cos(0) = 1 => perfect as it's only at that moment that x,z axis are the fathest away from center
+- if h = 90° => cos(90°) = 0 => indeed, if sun is above, then no way to move into x,z

@@ -19,7 +19,7 @@
     <button class="ui-button" id="reset-button">Reset</button>
   </div>
   <div id="light-ui">
-
+    <!-- Ambient light -->
     <div class="light-control">
 
       <button class="ui-button" id="ambient-button">
@@ -27,6 +27,35 @@
       </button>
 
       <input id="ambient-slider" type="range" min="0" max="1" step="0.01" value="0.5">
+
+    </div>
+
+    <!-- Directional light -->
+    <div class="light-control">
+
+      <button class="ui-button" id="directional-button">
+        Directional
+      </button>
+
+      <label>
+        Strength
+      </label>
+
+      <input id="directional-strength-slider" type="range" min="0" max="2" step="0.01" value="1">
+
+
+      <label>
+        Elevation
+      </label>
+
+      <input id="directional-elevation-slider" type="range" min="-90" max="90" step="45" value="45">
+
+
+      <label>
+        Rotation
+      </label>
+
+      <input id="directional-rotation-slider" type="range" min="0" max="360" step="45" value="0">
 
     </div>
   </div>

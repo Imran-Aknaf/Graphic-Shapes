@@ -148,6 +148,9 @@ Grid is :
   z-index: 10;
 
   display: none;
+
+  flex-direction: column;
+  gap: 10px;
 }
 
 

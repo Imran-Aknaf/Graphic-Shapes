@@ -25,3 +25,8 @@ Other ideas :
 - i want a button to not go towards shape but towards galaxy generation. Inspiration : https://vercidium.com/blog/random-galaxy-generation-with-c-and-opengl/
 
 
+
+PRIO : 
+- finir les 2 dernières lumières
+- rotation animation
+- rajouter bouton rotate
