@@ -930,31 +930,73 @@ class Renderer {
 
     if (!this.lights.directional.enabled) return;
 
-    const lightDir = this.normalize(this.computeDirectionToLight()) //surface → sun
-    const distance = 1;
+    // 3D vector points
+    const center3D = this.computeModelCenter() //transformed into camera world already
+    const lightDir = this.normalize(this.computeDirectionToLight()) //surface → sun + transformed into camera world already
 
-    const objectCenter = this.computeModelCenter()
+    const length = 20
+    const lightPoint3D = this.add(center3D, this.multiply(lightDir, length)) //end point
 
-    const sunPosition = this.add(objectCenter, this.multiply(lightDir, distance))
+    //clone
+    let startPoint = { ...center3D };
+    let endPoint = { ...lightPoint3D };
 
-    let p = sunPosition
+    /**
+     * When a point is behind camera (point.z < 0.1) => it gets discarded and no arrow/line is rendered
+     * Fix: let's find the point that cause issue, and let's move it along the vector direction at exactly where the vector intersect with camera-plane z=0.1
+     * 
+     * Any point in our vector can be calculated with: point(t) = start + t*(end-start)
+     * => (end-start) = length of the vector
+     * if t=0 => point = start, if t=1 => point = end => if t=0.5, it's the perfect middle point of the vector
+     * so t = ratio of length of the vector we want to advance
+     * 
+     * point(t) has surely a x,y,z. We would like to find point(t).z such that z=0.1 
+     * 
+     * z(t) = start_z + t*(end_z-start_z)
+     * 0.1 = start_z + t*(end_z-start_z)
+     * 0.1 - start_z = t*(end_z-start_z)
+     * t = (0.1 - start_z)/(end_z-start_z)
+     * 
+     * 
+     * now we can find the ratio of length to advance from start, to attein a point that will have z=0.1
+     */
 
-    if (p.z < 0.1) return
+    if (startPoint.z < 0.1 && endPoint.z < 0.1) {
+      console.log("dissappear")
+      return
+    }
+    else if (startPoint.z < 0.1) {
+      // compute t which is a % ratio of the vector length.
+      // we compute t such that beyond this part of the vector, we are 0.1 z in front of the camera
+      // we thus move the starting point (x,y,z) at exactly vectorStart + t * vectorLength
+      // now start point will be rendered in front of camera
+      const t = (0.1 - startPoint.z) / (endPoint.z - startPoint.z);
+      startPoint.x = startPoint.x + t * (endPoint.x - startPoint.x);
+      startPoint.y = startPoint.y + t * (endPoint.y - startPoint.y);
+      startPoint.z = 0.1;
+    }
 
-    p = this.NdcToScreen(this.project(p))
+    else if (endPoint.z < 0.1) {
+      //same thing but for endpoint
+      //this happends typically when we look at the center/face illumanated from the vector POV
+      //as at that moment the endPoint is behind camera, so we move it just in front of the camera 
+      //how ? we find ration t of length of the vector such that starting from startPoint + t*vectorLength, we get a point in front of camera
+      //we move the endPoint here
+      const t = (0.1 - startPoint.z) / (endPoint.z - startPoint.z);
+      endPoint.x = startPoint.x + t * (endPoint.x - startPoint.x);
+      endPoint.y = startPoint.y + t * (endPoint.y - startPoint.y);
+      endPoint.z = 0.1;
+    }
 
-    this.ctx.fillStyle = "yellow"
+    //2D screen vector points
+    const center2DScreen = this.NdcToScreen(this.project(startPoint))
+    const light2DScreen = this.NdcToScreen(this.project(endPoint))
 
-    this.ctx.beginPath()
-    this.ctx.arc(
-      p.x,
-      p.y,
-      10,
-      0,
-      Math.PI * 2
+    this.arrow(
+      light2DScreen,
+      center2DScreen,
+      "yellow"
     )
-
-    this.ctx.fill()
   }
 
   draw() {
