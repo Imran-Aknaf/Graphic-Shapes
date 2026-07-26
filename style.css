@@ -149,10 +149,15 @@ Grid is :
 
   display: none;
 
-  flex-direction: column;
-  gap: 10px;
+  flex-direction: row;
+  gap: 20px;
 }
 
+.light-column {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
 
 .light-control {
   display: flex;
@@ -179,10 +184,21 @@ Grid is :
   border: 1px solid rgba(255, 255, 255, 0.15);
 }
 
+.attenuation-controls {
+  display: none;
+  flex-direction: column;
+  gap: 5px;
+}
+
 .ui-button.active {
   background: #3cb44b;
   color: black;
 }
+
+.attenuation-controls.active {
+  display: flex;
+}
+
 
 input[type="range"] {
   cursor: pointer;

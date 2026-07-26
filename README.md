@@ -791,6 +791,29 @@ then:
 - DiffuseColor = objectColor × brightness
 
 
+More theory (updated) : 
+Attenuation = 1/ (K_c + K_l * distance + K_q * distance^2)
+
+
+Constants :  
+
+K_c: "Constant attenuation factor"
+- if face too close to light source => distance = 0 => divison by 0 ! => constant K_c prevents that. 
+- we generally put K_c = 1 => because when distance=0 , we want face brightness to be maximum = 1.
+
+K_l: "Linear attenuation factor"
+- reduces light intensity linearly as distance increase
+- light drops at a fixed, steady rate as distance increases
+
+K_q: "Quadratic attenuation factor"
+- mimics real world
+- cause light intensity to drop fast at first when moving far, then slow down as it gets further away.
+
+1. DiffuseFactor (orientation based)
+2. Attenuation (distance based)
+3. brightness = DiffuseFactor * Attenuation
+4. final formula: DiffuseColor = objectColor × brightness
+
 ### Everything together
 - Our goal is for each face (or pixel later), to ask : How much light reaches this surface.
 - so the quantity of interest is amount of light energy arriving at this face => call it "brightness"

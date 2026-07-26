@@ -324,7 +324,8 @@ class Renderer {
       showColors: options.showColors ?? false,
       showBackfaceCulling: options.showBackfaceCulling ?? true,
       showNormals: options.showNormals ?? false,
-      showSun: options.showSun ?? false,
+      showDirectionalLight: options.showDirectionalLight ?? false,
+      showPointLight: options.showPointLight ?? false,
 
       faceStyle: {
         fill: options.faceStyle?.fill ?? this.FACE,
@@ -348,6 +349,23 @@ class Renderer {
         elevation: 90,  //-90 → 90
         rotation: 0, //0 → 360
         strength: 1
+      },
+
+      point: {
+        enabled: true,
+        position: {
+          x: 2,
+          y: 2,
+          z: 2
+        },
+        strength: 1,
+
+        attenuation: {
+          enabled: false,
+          constant: 1,
+          linear: 0.1,
+          quadratic: 0.01
+        }
       }
 
     }
@@ -401,6 +419,17 @@ class Renderer {
 
   toggleDirectionalLighting() {
     this.lights.directional.enabled = !this.lights.directional.enabled
+  }
+
+  togglePointLighting() {
+    this.lights.point.enabled = !this.lights.point.enabled
+    if (!this.lights.point.enabled) {
+      this.lights.point.attenuation.enabled = false
+    }
+  }
+
+  togglePointAttenuation() {
+    this.lights.point.attenuation.enabled = !this.lights.point.attenuation.enabled
   }
 
   clear() {
@@ -701,7 +730,7 @@ class Renderer {
     return p
   }
 
-  applyAmbient() {
+  applyAmbientLight() {
     if (!this.lights.ambient.enabled) return 0
 
     return this.lights.ambient.strength
@@ -739,7 +768,7 @@ class Renderer {
     return light
   }
 
-  applyDirectional(face) {
+  applyDirectionalLight(face) {
     if (!this.lights.directional.enabled) return 0
 
     const normal = this.computeFaceNormal(face)
@@ -756,11 +785,47 @@ class Renderer {
     return brightness
   }
 
+  applyPointLight(face) {
+    if (!this.lights.point.enabled) return 0
+
+    const normal = this.computeFaceNormal(face)
+    const normalized_normal = this.normalize(normal)
+
+    //surface → light vector computation
+    const faceCenter = this.computeFaceCenter(face)
+    const lightPos = this.cameraTransform(this.lights.point.position) //light moves accordint to camera rotation/translation, but not affect by world transform
+    //TODO: later lightPos here affected also by camera transform.
+    //the best is to have a objectTransform(), lightTransform(), ..
+
+    const L = this.subtract(lightPos, faceCenter)
+    const normalized_L = this.normalize(L)
+
+
+    const diffuseFactor = this.dotProduct(normalized_normal, normalized_L)
+
+    let brightness = Math.max(diffuseFactor, 0)
+
+    //attenuattion added
+    if (this.lights.point.attenuation.enabled) {
+
+      const a = this.lights.point.attenuation
+      const distance = this.magnitude(L)
+
+      const attenuation =
+        1 / (a.constant + a.linear * distance + a.quadratic * (distance ** 2))
+
+      brightness *= attenuation
+    }
+
+    return brightness * this.lights.point.strength
+  }
+
   calculateLighting(face, materialColor) {
     let brightness = 0
 
-    brightness += this.applyAmbient()
-    brightness += this.applyDirectional(face)
+    brightness += this.applyAmbientLight()
+    brightness += this.applyDirectionalLight(face)
+    brightness += this.applyPointLight(face)
 
 
     return new Color(
@@ -999,6 +1064,23 @@ class Renderer {
     )
   }
 
+  draw_point_light() {
+    const pointLight3D = this.cameraTransform(this.lights.point.position)
+
+    const pointLightScreen = this.NdcToScreen(this.project(pointLight3D))
+
+    this.ctx.fillStyle = "yellow";
+    this.ctx.beginPath();
+    this.ctx.arc(
+      pointLightScreen.x,
+      pointLightScreen.y,
+      10,
+      0,
+      Math.PI * 2
+    );
+    this.ctx.fill();
+  }
+
   draw() {
     this.clear()
 
@@ -1013,8 +1095,12 @@ class Renderer {
     if (this.options.showNormals) {
       this.draw_normals()
     }
-    if (this.options.showSun) {
+    if (this.options.showDirectionalLight) {
       this.draw_directional_light()
+    }
+
+    if (this.options.showPointLight) {
+      this.draw_point_light()
     }
 
   }
@@ -1077,8 +1163,9 @@ const mainRenderer = new Renderer(canvas, currentModel, {
   showFaces: true,
   showColors: false,
   showBackfaceCulling: true,
-  showNormals: true,
-  showSun: true,
+  showNormals: false,
+  showDirectionalLight: true,
+  showPointLight: true,
 })
 
 
@@ -1089,8 +1176,12 @@ const faceBtn = document.getElementById("face-button");
 const cullingBtn = document.getElementById("culling-button");
 const colorBtn = document.getElementById("color-button");
 const normalBtn = document.getElementById("normal-button");
+
 const ambientBtn = document.getElementById("ambient-button");
 const directionalBtn = document.getElementById("directional-button");
+
+const pointBtn = document.getElementById("point-button");
+const attenuationBtn = document.getElementById("attenuation-button");
 
 
 //sliders
@@ -1098,6 +1189,15 @@ const ambientSlider = document.getElementById("ambient-slider")
 const directionalStrengthSlider = document.getElementById("directional-strength-slider")
 const directionalElevationSlider = document.getElementById("directional-elevation-slider")
 const directionalRotationSlider = document.getElementById("directional-rotation-slider")
+
+const pointStrengthSlider = document.getElementById("point-strength-slider");
+const pointXSlider = document.getElementById("point-x-slider");
+const pointYSlider = document.getElementById("point-y-slider");
+const pointZSlider = document.getElementById("point-z-slider");
+
+const attenuationConstantSlider = document.getElementById("attenuation-constant-slider");
+const attenuationLinearSlider = document.getElementById("attenuation-linear-slider");
+const attenuationQuadraticSlider = document.getElementById("attenuation-quadratic-slider");
 
 /*Renderer is source of truth, initialise UI based on it*/
 
@@ -1114,6 +1214,26 @@ directionalStrengthSlider.value = mainRenderer.lights.directional.strength;
 directionalElevationSlider.value = mainRenderer.lights.directional.elevation;
 directionalRotationSlider.value = mainRenderer.lights.directional.rotation;
 
+// Point
+pointStrengthSlider.disabled = !mainRenderer.lights.point.enabled;
+pointXSlider.disabled = !mainRenderer.lights.point.enabled;
+pointYSlider.disabled = !mainRenderer.lights.point.enabled;
+pointZSlider.disabled = !mainRenderer.lights.point.enabled;
+
+pointStrengthSlider.value = mainRenderer.lights.point.strength;
+pointXSlider.value = mainRenderer.lights.point.position.x;
+pointYSlider.value = mainRenderer.lights.point.position.y;
+pointZSlider.value = mainRenderer.lights.point.position.z;
+
+// Attenuation
+attenuationConstantSlider.disabled = !mainRenderer.lights.point.enabled || !mainRenderer.lights.point.attenuation.enabled;
+attenuationLinearSlider.disabled = !mainRenderer.lights.point.enabled || !mainRenderer.lights.point.attenuation.enabled;
+attenuationQuadraticSlider.disabled = !mainRenderer.lights.point.enabled || !mainRenderer.lights.point.attenuation.enabled;
+
+attenuationConstantSlider.value = mainRenderer.lights.point.attenuation.constant;
+attenuationLinearSlider.value = mainRenderer.lights.point.attenuation.linear;
+attenuationQuadraticSlider.value = mainRenderer.lights.point.attenuation.quadratic;
+
 
 /*initialise button styles to the current initial state*/
 vertexBtn.classList.toggle("active", mainRenderer.options.showVertices);
@@ -1122,10 +1242,36 @@ faceBtn.classList.toggle("active", mainRenderer.options.showFaces);
 cullingBtn.classList.toggle("active", mainRenderer.options.showBackfaceCulling);
 colorBtn.classList.toggle("active", mainRenderer.options.showColors);
 normalBtn.classList.toggle("active", mainRenderer.options.showNormals);
+
 ambientBtn.classList.toggle("active", mainRenderer.lights.ambient.enabled);
 directionalBtn.classList.toggle("active", mainRenderer.lights.directional.enabled);
 
+pointBtn.classList.toggle("active", mainRenderer.lights.point.enabled);
+attenuationBtn.classList.toggle("active", mainRenderer.lights.point.attenuation.enabled);
+
 /*Buttons Listener*/
+
+function updateAttenuationUI() {
+
+  const pointEnabled = mainRenderer.lights.point.enabled
+  const attenuationEnabled = mainRenderer.lights.point.attenuation.enabled
+
+  //if point ligth OFF => attenuation button should be disabled
+  attenuationBtn.disabled = !pointEnabled
+
+  //if point ON && attenuation ON => then show ON style 
+  attenuationBtn.classList.toggle("active", pointEnabled && attenuationEnabled)
+
+  //if point ON && attenuation ON => slider should appear and be controlable
+  const showSliders = pointEnabled && attenuationEnabled
+
+  attenuationConstantSlider.disabled = !showSliders
+  attenuationLinearSlider.disabled = !showSliders
+  attenuationQuadraticSlider.disabled = !showSliders
+
+  document.querySelector(".attenuation-controls").style.display =
+    showSliders ? "flex" : "none"
+}
 
 vertexBtn.addEventListener("click", () => {
   mainRenderer.toggleVertices();
@@ -1174,15 +1320,36 @@ directionalBtn.addEventListener("click", () => {
   directionalRotationSlider.disabled = !mainRenderer.lights.directional.enabled;
 });
 
+pointBtn.addEventListener("click", () => {
+  mainRenderer.togglePointLighting()
+
+  const enabled = mainRenderer.lights.point.enabled
+
+  pointBtn.classList.toggle("active", enabled)
+
+  pointStrengthSlider.disabled = !enabled
+  pointXSlider.disabled = !enabled
+  pointYSlider.disabled = !enabled
+  pointZSlider.disabled = !enabled
+
+  updateAttenuationUI()
+});
+
+attenuationBtn.addEventListener("click", () => {
+  mainRenderer.togglePointAttenuation()
+
+  updateAttenuationUI()
+});
+
 document.getElementById("reset-button").addEventListener("click", () => {
   mainRenderer.camera.reset();
 })
 
 /*Sliders Listener*/
 
+//Directional Light
 ambientSlider.addEventListener("input", () => {
-  //.value returns a string
-  mainRenderer.lights.ambient.strength = Number(ambientSlider.value)
+  mainRenderer.lights.ambient.strength = Number(ambientSlider.value) //.value returns a string
 })
 
 directionalStrengthSlider.addEventListener("input", () => {
@@ -1195,4 +1362,35 @@ directionalElevationSlider.addEventListener("input", () => {
 
 directionalRotationSlider.addEventListener("input", () => {
   mainRenderer.lights.directional.rotation = Number(directionalRotationSlider.value);
+})
+
+//Point Light
+pointStrengthSlider.addEventListener("input", () => {
+  mainRenderer.lights.point.strength = Number(pointStrengthSlider.value);
+})
+
+pointXSlider.addEventListener("input", () => {
+  mainRenderer.lights.point.position.x = Number(pointXSlider.value);
+})
+
+pointYSlider.addEventListener("input", () => {
+  mainRenderer.lights.point.position.y = Number(pointYSlider.value);
+})
+
+pointZSlider.addEventListener("input", () => {
+  mainRenderer.lights.point.position.z = Number(pointZSlider.value);
+})
+
+
+//Attenuation
+attenuationConstantSlider.addEventListener("input", () => {
+  mainRenderer.lights.point.attenuation.constant = Number(attenuationConstantSlider.value);
+})
+
+attenuationLinearSlider.addEventListener("input", () => {
+  mainRenderer.lights.point.attenuation.linear = Number(attenuationLinearSlider.value);
+})
+
+attenuationQuadraticSlider.addEventListener("input", () => {
+  mainRenderer.lights.point.attenuation.quadratic = Number(attenuationQuadraticSlider.value);
 })
