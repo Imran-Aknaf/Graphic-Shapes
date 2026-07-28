@@ -27,6 +27,5 @@ Other ideas :
 
 
 PRIO : 
-- finir les 2 dernières lumières
 - rotation animation
 - rajouter bouton rotate

@@ -72,9 +72,9 @@ document.addEventListener("keyup", e => {
   keys[e.key] = false
 })
 
-function updateCamera(camera) {
-  const moveSpeed = 0.05
-  const rotSpeed = 0.03
+function updateCamera(camera, dt) {
+  const moveSpeed = 3.0 * dt
+  const rotSpeed = 1.5 * dt
 
   //rotations
   if (keys["ArrowLeft"]) camera.rotate(rotSpeed, 0)
@@ -295,6 +295,7 @@ class Renderer {
 
     //transformations
     this.angle = 0
+    this.lightAngle = 0
     this.dx = 0
     this.dy = 0
     this.dz = 1
@@ -353,6 +354,7 @@ class Renderer {
 
       point: {
         enabled: true,
+        rotate: false,
         position: {
           x: 2,
           y: 2,
@@ -387,6 +389,10 @@ class Renderer {
 
     }
     return colors
+  }
+
+  toggleRotate() {
+    this.options.rotate = !this.options.rotate
   }
 
   toggleVertices() {
@@ -425,11 +431,16 @@ class Renderer {
     this.lights.point.enabled = !this.lights.point.enabled
     if (!this.lights.point.enabled) {
       this.lights.point.attenuation.enabled = false
+      this.lights.point.rotate = false
     }
   }
 
   togglePointAttenuation() {
     this.lights.point.attenuation.enabled = !this.lights.point.attenuation.enabled
+  }
+
+  togglePointRotate() {
+    this.lights.point.rotate = !this.lights.point.rotate
   }
 
   clear() {
@@ -698,13 +709,19 @@ class Renderer {
     }
   }
 
+  lightTransform(p) {
+    p = this.rotate_xz(p, this.lightAngle)
+    p = this.cameraTransform(p)
+    return p
+  }
+
+
   worldTransform(p) {
-    if (this.options.rotate) {
-      if (this.model.name == "Torus") {
-        p = this.rotate_yz(p, this.angle);
-      } else {
-        p = this.rotate_xz(p, this.angle)
-      }
+
+    if (this.model.name == "Torus") {
+      p = this.rotate_yz(p, this.angle);
+    } else {
+      p = this.rotate_xz(p, this.angle)
     }
 
     p = this.translate(p, this.dx, this.dy, this.dz);
@@ -793,7 +810,7 @@ class Renderer {
 
     //surface → light vector computation
     const faceCenter = this.computeFaceCenter(face)
-    const lightPos = this.cameraTransform(this.lights.point.position) //light moves accordint to camera rotation/translation, but not affect by world transform
+    const lightPos = this.lightTransform(this.lights.point.position)//this.cameraTransform(this.lights.point.position) //light moves accordint to camera rotation/translation, but not affect by world transform
     //TODO: later lightPos here affected also by camera transform.
     //the best is to have a objectTransform(), lightTransform(), ..
 
@@ -811,8 +828,7 @@ class Renderer {
       const a = this.lights.point.attenuation
       const distance = this.magnitude(L)
 
-      const attenuation =
-        1 / (a.constant + a.linear * distance + a.quadratic * (distance ** 2))
+      const attenuation = 1 / Math.max((a.constant + a.linear * distance + a.quadratic * (distance ** 2)), 0.001)
 
       brightness *= attenuation
     }
@@ -1065,7 +1081,12 @@ class Renderer {
   }
 
   draw_point_light() {
-    const pointLight3D = this.cameraTransform(this.lights.point.position)
+
+    if (!this.lights.point.enabled) return
+
+    const pointLight3D = this.lightTransform(this.lights.point.position) //this.cameraTransform(this.lights.point.position)
+
+    if (pointLight3D.z < 0.1) return
 
     const pointLightScreen = this.NdcToScreen(this.project(pointLight3D))
 
@@ -1106,12 +1127,17 @@ class Renderer {
   }
 
   update() {
-    this.angle += 2 * Math.PI * this.dt * this.rotations_per_second;
+    if (this.options.rotate) {
+      this.angle += 2 * Math.PI * this.dt * this.rotations_per_second;
+    }
 
+    if (this.lights.point.rotate) {
+      this.lightAngle += 2 * Math.PI * this.dt * this.rotations_per_second;
+    }
     //this.dz += 1 * this.dt; //will move back of +1 every second
 
     if (this.camera) {
-      updateCamera(this.camera)
+      updateCamera(this.camera, this.dt)
     }
   }
 
@@ -1176,12 +1202,14 @@ const faceBtn = document.getElementById("face-button");
 const cullingBtn = document.getElementById("culling-button");
 const colorBtn = document.getElementById("color-button");
 const normalBtn = document.getElementById("normal-button");
+const rotateBtn = document.getElementById("rotate-button")
 
 const ambientBtn = document.getElementById("ambient-button");
 const directionalBtn = document.getElementById("directional-button");
 
 const pointBtn = document.getElementById("point-button");
 const attenuationBtn = document.getElementById("attenuation-button");
+const rotateLightBtn = document.getElementById("rotate-light-button");
 
 
 //sliders
@@ -1242,12 +1270,14 @@ faceBtn.classList.toggle("active", mainRenderer.options.showFaces);
 cullingBtn.classList.toggle("active", mainRenderer.options.showBackfaceCulling);
 colorBtn.classList.toggle("active", mainRenderer.options.showColors);
 normalBtn.classList.toggle("active", mainRenderer.options.showNormals);
+rotateBtn.classList.toggle("active", mainRenderer.options.rotate);
 
 ambientBtn.classList.toggle("active", mainRenderer.lights.ambient.enabled);
 directionalBtn.classList.toggle("active", mainRenderer.lights.directional.enabled);
 
 pointBtn.classList.toggle("active", mainRenderer.lights.point.enabled);
 attenuationBtn.classList.toggle("active", mainRenderer.lights.point.attenuation.enabled);
+rotateLightBtn.classList.toggle("active", mainRenderer.lights.point.rotate);
 
 /*Buttons Listener*/
 
@@ -1255,12 +1285,15 @@ function updateAttenuationUI() {
 
   const pointEnabled = mainRenderer.lights.point.enabled
   const attenuationEnabled = mainRenderer.lights.point.attenuation.enabled
+  const pointRotate = mainRenderer.lights.point.rotate
 
   //if point ligth OFF => attenuation button should be disabled
   attenuationBtn.disabled = !pointEnabled
+  rotateLightBtn.disabled = !pointEnabled
 
   //if point ON && attenuation ON => then show ON style 
   attenuationBtn.classList.toggle("active", pointEnabled && attenuationEnabled)
+  rotateLightBtn.classList.toggle("active", pointEnabled && pointRotate)
 
   //if point ON && attenuation ON => slider should appear and be controlable
   const showSliders = pointEnabled && attenuationEnabled
@@ -1304,6 +1337,11 @@ normalBtn.addEventListener("click", () => {
   normalBtn.classList.toggle("active", mainRenderer.options.showNormals);
 })
 
+rotateBtn.addEventListener("click", () => {
+  mainRenderer.toggleRotate()
+  rotateBtn.classList.toggle("active", mainRenderer.options.rotate)
+})
+
 ambientBtn.addEventListener("click", () => {
   mainRenderer.toggleAmbientLighting()
   ambientBtn.classList.toggle("active", mainRenderer.lights.ambient.enabled)
@@ -1340,6 +1378,12 @@ attenuationBtn.addEventListener("click", () => {
 
   updateAttenuationUI()
 });
+
+rotateLightBtn.addEventListener("click", () => {
+  mainRenderer.togglePointRotate()
+  updateAttenuationUI()
+  //rotateLightBtn.classList.toggle("active", mainRenderer.lights.point.rotate)
+})
 
 document.getElementById("reset-button").addEventListener("click", () => {
   mainRenderer.camera.reset();

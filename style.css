@@ -126,6 +126,7 @@ Grid is :
   /*gap : space between child=btn*/
   gap: 10px;
   display: none;
+  /*transform into display:flex in the code*/
 }
 
 
@@ -138,6 +139,7 @@ Grid is :
   /*gap : space between child=btn*/
   gap: 10px;
   display: none;
+  /*transform into display:flex in the code*/
 }
 
 #light-ui {
@@ -148,6 +150,7 @@ Grid is :
   z-index: 10;
 
   display: none;
+  /*transform into display:flex in the code*/
 
   flex-direction: row;
   gap: 20px;
