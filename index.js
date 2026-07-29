@@ -141,6 +141,7 @@ const backbutton = document.getElementById("back-button")
 
 //get UI categories (div)
 const shapeUI = document.getElementById("shape-ui")
+const styleUI = document.getElementById("style-ui")
 const cameraUI = document.getElementById("camera-ui")
 const lightUI = document.getElementById("light-ui")
 
@@ -151,6 +152,7 @@ backbutton.addEventListener("click", () => {
   backbutton.style.display = "none"
 
   shapeUI.style.display = "none"
+  styleUI.style.display = "none"
   cameraUI.style.display = "none"
   lightUI.style.display = "none"
 
@@ -185,6 +187,7 @@ for (const model of models) {
     backbutton.style.display = "block"
 
     shapeUI.style.display = "flex"
+    styleUI.style.display = "flex"
     cameraUI.style.display = "flex"
     lightUI.style.display = "flex"
 
@@ -310,7 +313,8 @@ class Renderer {
     this.BACKGROUND = BACKGROUND_COLOR
     this.FOREGROUND = "#39d353";
     this.WHITE = "#e6edf3";
-    this.FACE = "#34495e";
+    this.MATERIAL_BASE = "#34495e";
+    this.MATERIAL_NEW = "#34495e";
 
     this.vertexSize = 15
     this.vertexShape = "circle"
@@ -323,13 +327,14 @@ class Renderer {
       showEdges: options.showEdges ?? false,
       showFaces: options.showFaces ?? true,
       showColors: options.showColors ?? false,
+      showMaterial: false,
       showBackfaceCulling: options.showBackfaceCulling ?? true,
       showNormals: options.showNormals ?? false,
       showDirectionalLight: options.showDirectionalLight ?? false,
       showPointLight: options.showPointLight ?? false,
 
       faceStyle: {
-        fill: options.faceStyle?.fill ?? this.FACE,
+        fill: options.faceStyle?.fill ?? this.MATERIAL_BASE,
         stroke: options.faceStyle?.stroke ?? this.FOREGROUND
       },
 
@@ -409,6 +414,16 @@ class Renderer {
 
   toggleColors() {
     this.options.showColors = !this.options.showColors
+  }
+
+  toggleMaterial() {
+    this.options.showMaterial = !this.options.showMaterial
+    if (!this.options.showMaterial) {
+      this.options.faceStyle.fill = this.MATERIAL_BASE
+    }
+    else {
+      this.options.faceStyle.fill = this.MATERIAL_NEW
+    }
   }
 
   toggleBackfaceCulling() {
@@ -710,9 +725,55 @@ class Renderer {
   }
 
   lightTransform(p) {
+    /**
+     * rotate_xz works to rotate around the WORLD ORIGIN (0,0,0)
+     * - but our object is actually at (0,0,1) because we translate it with dz=1
+     * 
+     * so we don't rotate around our object, let's fix that : 
+     * 
+     * 1. compute the offset/vector from (0,0,0) to objectCenter
+     *  > this tells you how much to move the light opposite to the vector direction, so that it is relative to (0,0,0)
+     *
+     * 2. move the light by subtracting offset (opposite direction), now light is relative to an object at (0,0,0) not (0,0,1)
+     * 
+     * 3. rotate around this fake object with rotate_xz (rotation around origin)
+     * 
+     * 4. use the new rotated position of the light and move it back of +offset (along vector)
+     *  > so that it is now relative to the real object center
+     *  
+     * TODO: i stopped because robust but bad performance when many renderer + not big diff
+     */
+
+    //1. compute objectCenter position in world
+    const objectCenter = {
+      x: this.dx,
+      y: this.dy,
+      z: this.dz
+    }
+
+    //2. compute offset = vector from origin to objectCenter = objectCenter - origin 
+    const offset = this.subtract(objectCenter, { x: 0, y: 0, z: 0 })
+
+    //3. move light down this offset (-offset, opposite direction) => it's now relative to (0,0,0)
+    p = this.translate(p, -offset.x, -offset.y, -offset.z)
+
+    //4. rotate around (0,0,0)
+    p = this.rotate_xz(p, this.lightAngle)
+
+    //5. move light back relative to objectCenter (+offset, along vector direction)
+    p = this.translate(p, offset.x, offset.y, offset.z)
+
+    //6. apply any camera change: world -> camera 
+    p = this.cameraTransform(p)
+
+    return p
+
+    /*oldest version, rotate around (0,0,0)
+    
     p = this.rotate_xz(p, this.lightAngle)
     p = this.cameraTransform(p)
-    return p
+    return p*/
+
   }
 
 
@@ -724,7 +785,7 @@ class Renderer {
       p = this.rotate_xz(p, this.angle)
     }
 
-    p = this.translate(p, this.dx, this.dy, this.dz);
+    p = this.translate(p, this.dx, this.dy, this.dz); //put the object forward of z+=1 to camera can see it (if not we are inside initially)
 
     return p
   }
@@ -810,9 +871,7 @@ class Renderer {
 
     //surface → light vector computation
     const faceCenter = this.computeFaceCenter(face)
-    const lightPos = this.lightTransform(this.lights.point.position)//this.cameraTransform(this.lights.point.position) //light moves accordint to camera rotation/translation, but not affect by world transform
-    //TODO: later lightPos here affected also by camera transform.
-    //the best is to have a objectTransform(), lightTransform(), ..
+    const lightPos = this.lightTransform(this.lights.point.position)
 
     const L = this.subtract(lightPos, faceCenter)
     const normalized_L = this.normalize(L)
@@ -1084,7 +1143,7 @@ class Renderer {
 
     if (!this.lights.point.enabled) return
 
-    const pointLight3D = this.lightTransform(this.lights.point.position) //this.cameraTransform(this.lights.point.position)
+    const pointLight3D = this.lightTransform(this.lights.point.position)
 
     if (pointLight3D.z < 0.1) return
 
@@ -1200,9 +1259,11 @@ const vertexBtn = document.getElementById("vertex-button");
 const edgeBtn = document.getElementById("edge-button");
 const faceBtn = document.getElementById("face-button");
 const cullingBtn = document.getElementById("culling-button");
-const colorBtn = document.getElementById("color-button");
 const normalBtn = document.getElementById("normal-button");
-const rotateBtn = document.getElementById("rotate-button")
+const rotateBtn = document.getElementById("rotate-button");
+
+const randomColorBtn = document.getElementById("random-color-button");
+const materialBtn = document.getElementById("material-button");
 
 const ambientBtn = document.getElementById("ambient-button");
 const directionalBtn = document.getElementById("directional-button");
@@ -1226,6 +1287,10 @@ const pointZSlider = document.getElementById("point-z-slider");
 const attenuationConstantSlider = document.getElementById("attenuation-constant-slider");
 const attenuationLinearSlider = document.getElementById("attenuation-linear-slider");
 const attenuationQuadraticSlider = document.getElementById("attenuation-quadratic-slider");
+
+//color picker
+const colorPicker = document.getElementById("material-color-picker")
+
 
 /*Renderer is source of truth, initialise UI based on it*/
 
@@ -1268,9 +1333,12 @@ vertexBtn.classList.toggle("active", mainRenderer.options.showVertices);
 edgeBtn.classList.toggle("active", mainRenderer.options.showEdges);
 faceBtn.classList.toggle("active", mainRenderer.options.showFaces);
 cullingBtn.classList.toggle("active", mainRenderer.options.showBackfaceCulling);
-colorBtn.classList.toggle("active", mainRenderer.options.showColors);
 normalBtn.classList.toggle("active", mainRenderer.options.showNormals);
 rotateBtn.classList.toggle("active", mainRenderer.options.rotate);
+
+randomColorBtn.classList.toggle("active", mainRenderer.options.showColors);
+materialBtn.classList.toggle("active", mainRenderer.options.showMaterial);
+colorPicker.disabled = !mainRenderer.options.showMaterial;
 
 ambientBtn.classList.toggle("active", mainRenderer.lights.ambient.enabled);
 directionalBtn.classList.toggle("active", mainRenderer.lights.directional.enabled);
@@ -1326,12 +1394,6 @@ cullingBtn.addEventListener("click", () => {
   cullingBtn.classList.toggle("active", mainRenderer.options.showBackfaceCulling);
 });
 
-
-colorBtn.addEventListener("click", () => {
-  mainRenderer.toggleColors();
-  colorBtn.classList.toggle("active", mainRenderer.options.showColors);
-});
-
 normalBtn.addEventListener("click", () => {
   mainRenderer.toggleNormals();
   normalBtn.classList.toggle("active", mainRenderer.options.showNormals);
@@ -1339,7 +1401,19 @@ normalBtn.addEventListener("click", () => {
 
 rotateBtn.addEventListener("click", () => {
   mainRenderer.toggleRotate()
-  rotateBtn.classList.toggle("active", mainRenderer.options.rotate)
+  rotateBtn.classList.toggle("active", mainRenderer.options.rotate);
+})
+
+
+randomColorBtn.addEventListener("click", () => {
+  mainRenderer.toggleColors()
+  randomColorBtn.classList.toggle("active", mainRenderer.options.showColors);
+});
+
+materialBtn.addEventListener("click", () => {
+  mainRenderer.toggleMaterial()
+  materialBtn.classList.toggle("active", mainRenderer.options.showMaterial);
+  colorPicker.disabled = !mainRenderer.options.showMaterial
 })
 
 ambientBtn.addEventListener("click", () => {
@@ -1437,4 +1511,10 @@ attenuationLinearSlider.addEventListener("input", () => {
 
 attenuationQuadraticSlider.addEventListener("input", () => {
   mainRenderer.lights.point.attenuation.quadratic = Number(attenuationQuadraticSlider.value);
+})
+
+/*Color picker listener*/
+colorPicker.addEventListener("input", () => {
+  mainRenderer.MATERIAL_NEW = colorPicker.value;
+  mainRenderer.options.faceStyle.fill = colorPicker.value; //Hex code
 })

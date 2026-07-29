@@ -9,23 +9,28 @@
 - need to have a button to activate/desactivate anywhere in this chain : vertices [/] → faces [/] → filled face [/] → hidden surface [/] → texture [TODO] 
 
 4. light & shadow : 
-- need to have a button to activate/desactivate these effects : source of light → shadowing [TODO]
-- for light, if possible i would like to be able to move it [TODO]
+- need to have a button to activate/desactivate these effects : source of light [/] → shadowing [TODO]
+- for light, if possible i would like to be able to move it [/]  
 
 5. normals visulation [/]
 
 For a futur version , the project should be extended on shape manipulation : 
 - move object with mouse
 - rotate object with mouse
-- ..
 
-Other ideas : 
-- 2 possible (toggle) menu selection : either the current, or one with only 1 previewCanvas that is way bigger, and left/right arrows 
+And also on extended featuers as :
+- more physical lights affected by transparance, absorption, emission, reflection
+- new scene with special test object , eg. staircase, sofa
 
-- i want a button to not go towards shape but towards galaxy generation. Inspiration : https://vercidium.com/blog/random-galaxy-generation-with-c-and-opengl/
+Big other extension : 
+- generalise the project to have home dashboard that leads to : 
+1. current 3D shape project
+2. galaxy generation project [TODO] => Inspiration : https://vercidium.com/blog/random-galaxy-generation-with-c-and-opengl/
 
 
 
-PRIO : 
-- rotation animation
-- rajouter bouton rotate
+To finish for V1 : 
+- object rotation [/]
+- light rotation [/]
+- surface reflection => Specular lighting [INGOING]
+- color wheel > face UI [TODO]
