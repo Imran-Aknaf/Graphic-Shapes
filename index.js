@@ -144,6 +144,7 @@ const shapeUI = document.getElementById("shape-ui")
 const styleUI = document.getElementById("style-ui")
 const cameraUI = document.getElementById("camera-ui")
 const lightUI = document.getElementById("light-ui")
+const specularUI = document.getElementById("specular-ui")
 
 backbutton.addEventListener("click", () => {
   menu.style.display = "grid"
@@ -155,6 +156,7 @@ backbutton.addEventListener("click", () => {
   styleUI.style.display = "none"
   cameraUI.style.display = "none"
   lightUI.style.display = "none"
+  specularUI.style.display = "none"
 
   mainRenderer.stop()
 
@@ -190,6 +192,7 @@ for (const model of models) {
     styleUI.style.display = "flex"
     cameraUI.style.display = "flex"
     lightUI.style.display = "flex"
+    specularUI.style.display = "flex"
 
     mainRenderer.start()
 
@@ -313,11 +316,16 @@ class Renderer {
     this.BACKGROUND = BACKGROUND_COLOR
     this.FOREGROUND = "#39d353";
     this.WHITE = "#e6edf3";
-    this.MATERIAL_BASE = "#34495e";
-    this.MATERIAL_NEW = "#34495e";
 
     this.vertexSize = 15
     this.vertexShape = "circle"
+
+    this.MATERIAL_BASE = "#34495e";
+    this.MATERIAL_NEW = "#34495e";
+
+    this.SPECULAR_ENABLED = false;
+    this.SPECULAR_STRENGTH = 1.0;
+    this.SPECULAR_SHININESS = 32;
 
     //styling & button options
     this.options = {
@@ -456,6 +464,10 @@ class Renderer {
 
   togglePointRotate() {
     this.lights.point.rotate = !this.lights.point.rotate
+  }
+
+  toggleSpecular() {
+    this.SPECULAR_ENABLED = !this.SPECULAR_ENABLED
   }
 
   clear() {
@@ -675,6 +687,16 @@ class Renderer {
     return outwardNormal
   }
 
+
+  computeViewDirection(face) {
+    const faceCenter = this.computeFaceCenter(face)
+    const cameraPos = { x: 0, y: 0, z: 0 }
+
+    const V = this.subtract(cameraPos, faceCenter)
+
+    return this.normalize(V)
+  }
+
   NdcToScreen({ x, y }) {
     //[-1,1] --> [0,2] --> [0,1] --> [0,w] : x' = (x+1)/2 * w
     //[1,-1] --> [0,2] -> [0,1] -> [0,h] : y' = (1-y)/2 * h  
@@ -847,7 +869,7 @@ class Renderer {
   }
 
   applyDirectionalLight(face) {
-    if (!this.lights.directional.enabled) return 0
+    if (!this.lights.directional.enabled) return null
 
     const normal = this.computeFaceNormal(face)
     const normalized_normal = this.normalize(normal)
@@ -858,13 +880,28 @@ class Renderer {
 
     const diffuseFactor = this.dotProduct(normalized_normal, normalized_L)
 
-    const brightness = Math.max(diffuseFactor, 0) * this.lights.directional.strength
+    const diffuse = Math.max(diffuseFactor, 0) * this.lights.directional.strength
 
-    return brightness
+    let specular = 0
+    // Check if light source somewhat facing the front of the surface
+    if (this.SPECULAR_ENABLED && diffuseFactor > 0) {
+      const V = this.computeViewDirection(face)
+
+      // R = 2 * (N · L) * N - L
+      const scaledNormal = this.multiply(normalized_normal, 2 * diffuseFactor)
+      const R = this.subtract(scaledNormal, normalized_L)
+      const normalized_R = this.normalize(R)
+
+      const dotRV = Math.max(this.dotProduct(normalized_R, V), 0) //viewer is in the path of reflected light ?
+
+      specular = Math.pow(dotRV, this.SPECULAR_SHININESS) * this.SPECULAR_STRENGTH * this.lights.directional.strength
+    }
+
+    return { diffuse, specular }
   }
 
   applyPointLight(face) {
-    if (!this.lights.point.enabled) return 0
+    if (!this.lights.point.enabled) return null
 
     const normal = this.computeFaceNormal(face)
     const normalized_normal = this.normalize(normal)
@@ -879,7 +916,23 @@ class Renderer {
 
     const diffuseFactor = this.dotProduct(normalized_normal, normalized_L)
 
-    let brightness = Math.max(diffuseFactor, 0)
+    let diffuse = Math.max(diffuseFactor, 0)
+
+    //specular 
+    let specular = 0
+    // Check if light source somewhat facing the front of the surface
+    if (this.SPECULAR_ENABLED && diffuseFactor > 0) {
+      const V = this.computeViewDirection(face)
+
+      // R = 2 * (N · L) * N - L
+      const scaledNormal = this.multiply(normalized_normal, 2 * diffuseFactor)
+      const R = this.subtract(scaledNormal, normalized_L)
+      const normalized_R = this.normalize(R)
+
+      const dotRV = Math.max(this.dotProduct(normalized_R, V), 0) //viewer is in the path of reflected light ?
+
+      specular = Math.pow(dotRV, this.SPECULAR_SHININESS) * this.SPECULAR_STRENGTH
+    }
 
     //attenuattion added
     if (this.lights.point.attenuation.enabled) {
@@ -889,24 +942,43 @@ class Renderer {
 
       const attenuation = 1 / Math.max((a.constant + a.linear * distance + a.quadratic * (distance ** 2)), 0.001)
 
-      brightness *= attenuation
+      diffuse *= attenuation
+      specular *= attenuation
     }
 
-    return brightness * this.lights.point.strength
+    diffuse *= this.lights.point.strength
+    specular *= this.lights.point.strength
+
+    return { diffuse, specular }
   }
 
   calculateLighting(face, materialColor) {
-    let brightness = 0
+    let totalDiffuse = 0
+    let totalSpecular = 0
 
-    brightness += this.applyAmbientLight()
-    brightness += this.applyDirectionalLight(face)
-    brightness += this.applyPointLight(face)
+    //Ambient light only contributes a constant diffuse factor
+    totalDiffuse += this.applyAmbientLight()
 
+    const directionalLight = this.applyDirectionalLight(face)
+    if (directionalLight) {
+      totalDiffuse += directionalLight.diffuse
+      totalSpecular += directionalLight.specular
+    }
 
+    const pointLight = this.applyPointLight(face)
+    if (pointLight) {
+      totalDiffuse += pointLight.diffuse
+      totalSpecular += pointLight.specular
+    }
+
+    //totalSpecular * lightColor = how much light is reflect into viewer eyes
+    const finalSpecularRGB = totalSpecular * 255 //assumes light = WHITE = 255,255,255
+
+    // Standard Phong Formula: (Material Color * Total Diffuse) + Total Specular
     return new Color(
-      materialColor.r * brightness,
-      materialColor.g * brightness,
-      materialColor.b * brightness
+      (materialColor.r * totalDiffuse) + finalSpecularRGB,
+      (materialColor.g * totalDiffuse) + finalSpecularRGB,
+      (materialColor.b * totalDiffuse) + finalSpecularRGB
     )
   }
 
@@ -1272,6 +1344,7 @@ const pointBtn = document.getElementById("point-button");
 const attenuationBtn = document.getElementById("attenuation-button");
 const rotateLightBtn = document.getElementById("rotate-light-button");
 
+const specularBtn = document.getElementById("specular-button");
 
 //sliders
 const ambientSlider = document.getElementById("ambient-slider")
@@ -1287,6 +1360,9 @@ const pointZSlider = document.getElementById("point-z-slider");
 const attenuationConstantSlider = document.getElementById("attenuation-constant-slider");
 const attenuationLinearSlider = document.getElementById("attenuation-linear-slider");
 const attenuationQuadraticSlider = document.getElementById("attenuation-quadratic-slider");
+
+const specularStrenghSlider = document.getElementById("specular-strength-slider");
+const specularShininessSlider = document.getElementById("specular-shininess-slider");
 
 //color picker
 const colorPicker = document.getElementById("material-color-picker")
@@ -1327,6 +1403,13 @@ attenuationConstantSlider.value = mainRenderer.lights.point.attenuation.constant
 attenuationLinearSlider.value = mainRenderer.lights.point.attenuation.linear;
 attenuationQuadraticSlider.value = mainRenderer.lights.point.attenuation.quadratic;
 
+// Specular
+specularStrenghSlider.disabled = !mainRenderer.SPECULAR_ENABLED;
+specularShininessSlider.disabled = !mainRenderer.SPECULAR_ENABLED;
+
+specularStrenghSlider.value = mainRenderer.SPECULAR_STRENGTH;
+specularShininessSlider.value = mainRenderer.SPECULAR_SHININESS;
+
 
 /*initialise button styles to the current initial state*/
 vertexBtn.classList.toggle("active", mainRenderer.options.showVertices);
@@ -1346,6 +1429,8 @@ directionalBtn.classList.toggle("active", mainRenderer.lights.directional.enable
 pointBtn.classList.toggle("active", mainRenderer.lights.point.enabled);
 attenuationBtn.classList.toggle("active", mainRenderer.lights.point.attenuation.enabled);
 rotateLightBtn.classList.toggle("active", mainRenderer.lights.point.rotate);
+
+specularBtn.classList.toggle("active", mainRenderer.SPECULAR_ENABLED);
 
 /*Buttons Listener*/
 
@@ -1459,6 +1544,13 @@ rotateLightBtn.addEventListener("click", () => {
   //rotateLightBtn.classList.toggle("active", mainRenderer.lights.point.rotate)
 })
 
+specularBtn.addEventListener("click", () => {
+  mainRenderer.toggleSpecular()
+  specularBtn.classList.toggle("active", mainRenderer.SPECULAR_ENABLED)
+  specularStrenghSlider.disabled = !mainRenderer.SPECULAR_ENABLED
+  specularShininessSlider.disabled = !mainRenderer.SPECULAR_ENABLED
+})
+
 document.getElementById("reset-button").addEventListener("click", () => {
   mainRenderer.camera.reset();
 })
@@ -1512,6 +1604,17 @@ attenuationLinearSlider.addEventListener("input", () => {
 attenuationQuadraticSlider.addEventListener("input", () => {
   mainRenderer.lights.point.attenuation.quadratic = Number(attenuationQuadraticSlider.value);
 })
+
+
+//Specular
+specularStrenghSlider.addEventListener("input", () => {
+  mainRenderer.SPECULAR_STRENGTH = Number(specularStrenghSlider.value);
+})
+
+specularShininessSlider.addEventListener("input", () => {
+  mainRenderer.SPECULAR_SHININESS = Number(specularShininessSlider.value);
+})
+
 
 /*Color picker listener*/
 colorPicker.addEventListener("input", () => {

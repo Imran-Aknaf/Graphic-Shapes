@@ -170,6 +170,35 @@ Grid is :
   gap: 20px;
 }
 
+#specular-ui {
+  position: fixed;
+  top: 160px;
+  right: 150px;
+
+  z-index: 10;
+
+  display: none;
+  /*transform into display:flex in the code*/
+
+  flex-direction: row;
+  gap: 20px;
+}
+
+/*Specular styling*/
+
+.specular-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+
+  color: white;
+
+  background: #222;
+
+  padding: 10px;
+  border-radius: 8px;
+}
+
 /*Light styling*/
 
 .light-column {

@@ -833,6 +833,113 @@ Directional:
 Only when brightness/energy the face receive is fully computed, can we make the material react to this amount of light :
 - finalColor = materialColor × brightness
 
+
+## 2. Reflection effet
+- the shiny highlight/bright spot you see on a surface
+- this is due to light hitting the surface at a certain point and boucing/reflecting straight into your eyes
+
+### A) Specular lighting
+![Specular highlights](./illustrations/specular-highlight-schema.png)
+![Specular formula](./illustrations/specular-formula.png)
+
+
+Mathematically: 
+
+There is 3 vectors in play here for each face/surface 
+1. Surface normal, normalized (N)
+2. Direction toward light, normalized (L) : L = lightPos - faceCenter , L = normalize(L)
+3. Direction toward camera/viewer, normalized (V) : V = cameraPos - faceCenter, V = normalize(V)
+
+What happens physically:
+1. lights come toward the surface and hit it
+2. the surface reflects the light
+3. the reflect ray follow a specific direction called (R) = the reflection vector
+
+and the whole idea is intuitive now, we want to mainly compare R and V to understand how much we see this reflection i guess
+so the angle of interest is really <R,V> angle, we will call it (φ).
+
+So what do we actually do of all the info above ?
+
+1. compute the reflection vector (R) : 
+R = 2(N ⋅ L)N - L
+
+let's make sense of this : 
+- (N ⋅ L): dot product => N · L = |N||L|cos(θ) => |N̂|=|L|=1 => N̂ · L = cos(θ) => conclusion (N ⋅ L) = cos(θ)
+- why did we compute that ? well because cos(θ) is actually an important distance and with it we build a smaller vector N, explained below : 
+
+
+![(N ⋅ L)N explaination](./illustrations/specular-explaination-1.png)
+Note : (N ⋅ L) is a scalar between 0 and 1 for ex. so obviously dowing (N ⋅ L)N will give us a vector exactly on N but smaller (it will be as tall as to intersect with the blue horizontal dotted line)
+
+- ok now we understand what (N ⋅ L)N gives geometrically, but why did we wanted to have this vector ? well look below again to understand : 
+
+![whole formula explaination](./illustrations/specular-explaination-2.png)
+Note : now it make sense to multiply by 2 and do minus L to arrive at (R)
+
+2. compute viewer vector (V) : 
+V = V = cameraPos - faceCenter, V = normalize(V)
+
+3. now it make sense to look if R & V points almost at the same direction meaning toward the camera
+=> V always points toward the camera 
+=> so if R points like V => R points toward/close to the camera
+=> then that means the viewer is essentially standing in the path of the reflected light
+=> so he should be affected and see the surface looking shiny. 
+
+(R ⋅ V)
+=> but because R and V are both normalized
+(R ⋅ V) = cos(φ), φ is the angle between reflected light and viewer direction
+
+And obviously : 
+- if point in the same direction => φ = 0° => dot = cos(φ) = 1 => maximum specular highlight
+- if perpendicular => no highlight
+- if negative => clamp to 0 => no highlight
+
+- max(R ⋅ V, 0)
+
+
+Final formula is : 
+SpecularHighlight = I_s = K_s * max(R ⋅ V, 0)^n
+
+I_s = returned light intensity
+K_s = specular strengh
+n = shininess => basically faces that will have a high dot (meaning viewer will be near reflection path), will be very bright compared to face where dot is low => why ? => because 0.5^3 = 0.125 VS 0.9^3 = 0.7
+
+
+
+## 3. Light model recap
+
+Every light source evaluates its own contributions separately:
+
+1. Ambient Light
+- pure **Diffuse factor** = strengh
+
+2. Directional Light
+- **Diffuse factor** 
+- **Specular factor** => Only calculated if the diffuse > 0 => ($N \cdot L > 0$) => light is not behind surface
+
+3. Point Light
+- **Diffuse factor** 
+- **Specular factor** => Only calculated if the diffuse > 0 => ($N \cdot L > 0$) => light is not behind surface
+
+- Note: attenuation (distance falloff) scales **both** its diffuse and specular components equally before returning them
+
+The final equation : 
+### The Final Equation
+
+Physically, a specular highlight is a direct reflection of the **light's color**, not the object's color. If you shine a white light on a blue object, the shiny spot is white, while the illuminated surface is blue.
+
+=> So we separate the factors as such : 
+
+$$\text{Final Color} = (\text{Material Color} \times \text{Total Diffuse}) + (\text{Light Color} \times \text{Total Specular})$$
+
+Where:
+* $\text{Total Diffuse} = \text{Ambient} + \text{Directional}_{\text{diffuse}} + \text{Point}_{\text{diffuse}}$
+* $\text{Total Specular} = \text{Directional}_{\text{specular}} + \text{Point}_{\text{specular}}$
+
+By multiplying $\text{Total Diffuse}$ by the $\text{Material Color}$, we correctly shade the object's base color. 
+By multiplying $\text{Total Specular}$ by the $\text{Light Color}$, we correctly reflect light.
+
+
 # Hex To RGB explained : 
 ![Hex to RGB](./illustrations/HexToRGB.png)
 

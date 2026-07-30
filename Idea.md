@@ -21,16 +21,10 @@ For a futur version , the project should be extended on shape manipulation :
 And also on extended featuers as :
 - more physical lights affected by transparance, absorption, emission, reflection
 - new scene with special test object , eg. staircase, sofa
+- UI color choice for every different light source
 
 Big other extension : 
 - generalise the project to have home dashboard that leads to : 
 1. current 3D shape project
 2. galaxy generation project [TODO] => Inspiration : https://vercidium.com/blog/random-galaxy-generation-with-c-and-opengl/
 
-
-
-To finish for V1 : 
-- object rotation [/]
-- light rotation [/]
-- surface reflection => Specular lighting [INGOING]
-- color wheel > face UI [TODO]
