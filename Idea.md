@@ -23,6 +23,11 @@ And also on extended featuers as :
 - new scene with special test object , eg. staircase, sofa
 - UI color choice for every different light source
 
+Can explore those too (taken from ULB graphics course) :
+- Toon shading
+- Hatching / sketch rendering
+- Sobel outline post-processing
+
 Big other extension : 
 - generalise the project to have home dashboard that leads to : 
 1. current 3D shape project
